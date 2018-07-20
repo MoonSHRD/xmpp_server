@@ -1,0 +1,9 @@
+# Test basic configuration
+
+storage:
+  type: memory
+
+virtual_hosts:
+  - id: default
+    transport:
+      port: 5222
