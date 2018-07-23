@@ -176,8 +176,8 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     }
     
     //validate pub_key
-    pub_ec:=crypto.ToECDSAPub(params.pubKey)
-    if crypto.PointPubkeyToAddress(pub_ec).Str()!=params.username {
+    pub_ec:=*crypto.ToECDSAPub(params.pubKey)
+    if crypto.PubkeyToAddress(pub_ec).Str()!=params.username {
         return ErrSASLNotAuthorized
     }
     
