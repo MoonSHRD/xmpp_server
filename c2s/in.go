@@ -73,17 +73,18 @@ type modules struct {
 }
 
 type inStream struct {
-	cfg            *streamConfig
-	sess           *session.Session
-	id             string
-	connectTm      *time.Timer
-	state          uint32
-	ctx            stream.Context
-	authenticators []auth.Authenticator
-	activeAuth     auth.Authenticator
-	mods           modules
-	actorCh        chan func()
-	doneCh         chan<- struct{}
+	cfg                         *streamConfig
+	sess                        *session.Session
+	id                          string
+	connectTm                   *time.Timer
+	state                       uint32
+	ctx                         stream.Context
+	sasl_authenticators         []auth.Authenticator
+	non_sasl_authenticator      auth.Authenticator
+	activeAuth                  auth.Authenticator
+	mods                        modules
+	actorCh                     chan func()
+	doneCh                      chan<- struct{}
 }
 
 func newStream(id string, cfg *streamConfig) stream.C2S {
@@ -104,7 +105,7 @@ func newStream(id string, cfg *streamConfig) stream.C2S {
 	j, _ := jid.New("", "", "", true)
 	s.ctx.SetObject(j, jidCtxKey)
 
-	// initialize authenticators
+	// initialize sasl_authenticators
 	s.initializeAuthenticators()
 
 	// initialize modules
@@ -212,8 +213,8 @@ func (s *inStream) initializeAuthenticators() {
 		case "digest_md5":
 			authenticators = append(authenticators, auth.NewDigestMD5(s))
 
-		case "sign":
-			authenticators = append(authenticators, auth.NewSign(s))
+		//case "sign":
+		//	authenticators = append(authenticators, auth.NewSign(s))
 
 		case "scram_sha_1":
 			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, false))
@@ -224,7 +225,8 @@ func (s *inStream) initializeAuthenticators() {
 			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, true))
 		}
 	}
-	s.authenticators = authenticators
+	s.sasl_authenticators = authenticators
+	s.non_sasl_authenticator = auth.NewSign(s)
 }
 
 func (s *inStream) initializeModules() {
@@ -362,10 +364,10 @@ func (s *inStream) unauthenticatedFeatures() []xml.XElement {
 	// attach SASL mechanisms
 	shouldOfferSASL := (!isSocketTr || (isSocketTr && s.IsSecured()))
 
-	if shouldOfferSASL && len(s.authenticators) > 0 {
+	if shouldOfferSASL && len(s.sasl_authenticators) > 0 {
 		mechanisms := xml.NewElementName("mechanisms")
 		mechanisms.SetNamespace(saslNamespace)
-		for _, athr := range s.authenticators {
+		for _, athr := range s.sasl_authenticators {
 			mechanism := xml.NewElementName("mechanism")
 			mechanism.SetText(athr.Mechanism())
 			mechanisms.AppendElement(mechanism)
@@ -380,6 +382,11 @@ func (s *inStream) unauthenticatedFeatures() []xml.XElement {
 		registerFeature := xml.NewElementNamespace("register", "http://jabber.org/features/iq-register")
 		features = append(features, registerFeature)
 	}
+	
+    auth_fe := xml.NewElementName("auth")
+    auth_fe.SetNamespace(nonSaslNamespace)
+	features = append(features, auth_fe)
+	
 	return features
 }
 
@@ -441,15 +448,26 @@ func (s *inStream) handleConnected(elem xml.XElement) {
 }
 
 func (s *inStream) handleAuthenticating(elem xml.XElement) {
-	if elem.Namespace() != saslNamespace {
-		s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
-		return
-	}
-	authr := s.activeAuth
-	s.continueAuthentication(elem, authr)
-	if authr.Authenticated() {
-		s.finishAuthentication(authr.Username())
-	}
+    switch elem.Namespace() {
+        case saslNamespace:
+            authr := s.activeAuth
+            s.continueAuthentication(elem, authr)
+            if authr.Authenticated() {
+                s.finishAuthentication(authr.Username())
+            }
+            break
+        case nonSaslNamespace:
+            authr := s.activeAuth
+            s.continueAuthentication(elem, authr)
+            if authr.Authenticated() {
+                s.finishAuthentication(authr.Username())
+            }
+            break
+        default:
+            s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
+            break
+    }
+    return
 }
 
 func (s *inStream) handleAuthenticated(elem xml.XElement) {
@@ -540,12 +558,58 @@ func (s *inStream) compress(elem xml.XElement) {
 }
 
 func (s *inStream) startAuthentication(elem xml.XElement) {
+    switch elem.Namespace() {
+        case saslNamespace:
+            mechanism := elem.Attributes().Get("mechanism")
+            for _, authr := range s.sasl_authenticators {
+                if authr.Mechanism() == mechanism {
+                    if err := s.continueAuthentication(elem, authr); err != nil {
+                        return
+                    }
+                    if authr.Authenticated() {
+                        s.finishAuthentication(authr.Username())
+                    } else {
+                        s.activeAuth = authr
+                        s.setState(authenticating)
+                    }
+                    return
+                }
+            }
+            failure := xml.NewElementNamespace("failure", saslNamespace)
+            failure.AppendElement(xml.NewElementName("invalid-mechanism"))
+            s.writeElement(failure)
+            
+        case nonSaslNamespace:
+            authr:=s.non_sasl_authenticator
+            if err := s.continueAuthentication(elem, authr); err != nil {
+                return
+            }
+            if authr.Authenticated() {
+                s.finishAuthentication(authr.Username())
+            } else {
+                s.activeAuth = authr
+                s.setState(authenticating)
+            }
+            return
+        
+        default:
+            s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
+        
+    }
+    
+    return
+    
+    
+    
+    
+    
+    
 	if elem.Namespace() != saslNamespace {
 		s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
 		return
 	}
 	mechanism := elem.Attributes().Get("mechanism")
-	for _, authr := range s.authenticators {
+	for _, authr := range s.sasl_authenticators {
 		if authr.Mechanism() == mechanism {
 			if err := s.continueAuthentication(elem, authr); err != nil {
 				return
@@ -575,6 +639,17 @@ func (s *inStream) continueAuthentication(elem xml.XElement, authr auth.Authenti
 	}
 	return err
 }
+
+//func (s *inStream) continueNonSaslAuthentication(elem xml.XElement, authr auth.Authenticator) error {
+//	err := authr.ProcessElement(elem)
+//	if saslErr, ok := err.(*auth.SASLError); ok {
+//		s.failAuthentication(saslErr.Element())
+//	} else if err != nil {
+//		log.Error(err)
+//		s.failAuthentication(auth.ErrSASLTemporaryAuthFailure.(*auth.SASLError).Element())
+//	}
+//	return err
+//}
 
 func (s *inStream) finishAuthentication(username string) {
 	if s.activeAuth != nil {

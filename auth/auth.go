@@ -8,6 +8,7 @@ package auth
 import "github.com/ortuman/jackal/xml"
 
 const saslNamespace = "urn:ietf:params:xml:ns:xmpp-sasl"
+const nonSaslNamespace = "jabber:iq:auth"
 
 // Authenticator defines a generic authenticator state machine.
 type Authenticator interface {

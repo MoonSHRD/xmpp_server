@@ -129,6 +129,7 @@ type Config struct {
 	ResourceConflict ResourceConflictPolicy
 	Transport        TransportConfig
 	SASL             []string
+	NONSASL          string
 	Compression      CompressConfig
 }
 
@@ -141,6 +142,7 @@ type configProxy struct {
 	ResourceConflict string          `yaml:"resource_conflict"`
 	Transport        TransportConfig `yaml:"transport"`
 	SASL             []string        `yaml:"sasl"`
+	NONSASL          string          `yaml:"non_sasl"`
 	Compression      CompressConfig  `yaml:"compression"`
 }
 
@@ -175,7 +177,7 @@ func (cfg *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// validate SASL mechanisms
 	for _, sasl := range p.SASL {
 		switch sasl {
-		case "plain", "digest_md5", "scram_sha_1", "scram_sha_256", "sign":
+		case "plain", "digest_md5", "scram_sha_1", "scram_sha_256":
 			continue
 		default:
 			return fmt.Errorf("c2s.Config: unrecognized SASL mechanism: %s", sasl)
@@ -183,6 +185,7 @@ func (cfg *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	cfg.Transport = p.Transport
 	cfg.SASL = p.SASL
+	cfg.NONSASL = p.NONSASL
 	cfg.Compression = p.Compression
 	return nil
 }
@@ -193,6 +196,7 @@ type streamConfig struct {
 	maxStanzaSize    int
 	resourceConflict ResourceConflictPolicy
 	sasl             []string
+	non_sasl         string
 	compression      CompressConfig
 	modules          *module.Config
 }

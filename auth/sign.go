@@ -140,7 +140,7 @@ func (sig *Sign) handleStart(elem xml.XElement) error {
     nonce := base64.StdEncoding.EncodeToString(util.RandomBytes(32))
     chnge := fmt.Sprintf(`realm="%s",nonce="%s",qop="auth",charset=utf-8,algorithm=eth-sign`, domain, nonce)
     
-    respElem := xml.NewElementNamespace("challenge", saslNamespace)
+    respElem := xml.NewElementNamespace("challenge", nonSaslNamespace)
     respElem.SetText(chnge)
     sig.stm.SendElement(respElem)
     
@@ -155,13 +155,13 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     params := sig.parseParameters(elem.Text())
     
     // validate realm
-    if params.realm != sig.stm.Domain() {
-        return ErrSASLNotAuthorized
-    }
+    //if params.realm != sig.stm.Domain() {
+    //    return ErrSASLNotAuthorized
+    //}
     // validate nc
-    if params.nc != "00000001" {
-        return ErrSASLNotAuthorized
-    }
+    //if params.nc != "00000001" {
+    //    return ErrSASLNotAuthorized
+    //}
     // validate qop
     if params.qop != "auth" {
         return ErrSASLNotAuthorized
@@ -171,13 +171,41 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
         return ErrSASLNotAuthorized
     }
     // validate digest-uri
-    if !strings.HasPrefix(params.digestURI, "xmpp/") || params.digestURI[5:] != sig.stm.Domain() {
-        return ErrSASLNotAuthorized
-    }
+    //if !strings.HasPrefix(params.digestURI, "xmpp/") || params.digestURI[5:] != sig.stm.Domain() {
+    //    return ErrSASLNotAuthorized
+    //}
     
     //validate pub_key
-    pub_ec:=*crypto.ToECDSAPub(params.pubKey)
-    if crypto.PubkeyToAddress(pub_ec).Str()!=params.username {
+    //crypto.UnmarshalPubkey(params.pubKey)
+    
+    //key,_:=crypto.GenerateKey()
+    //key1:=string(crypto.FromECDSA(key))
+    ////pri:="b27a276db9c01d272116f337ddd02b4aa7b2d5869ff5687e5929005196e480fc"
+    //pub:="0x06ef2f0b4be72a8ecce6b2adcda1aad4c91fccf1fe8e1574e07446e47caf106234581ce02e0e328f7d450b648ef40a7f9a203c848893ca66ca0119403ab481e1"
+    //addr:="0xfb951431c04241d6c82b5e0edfcd82ca592e6bab"
+    //
+    ////fmt.Print(fefe)
+    //
+    //pub_ec,err:=crypto.UnmarshalPubkey([]byte(pub))
+    //if err !=nil {
+    //    fmt.Print(err)
+    //}
+    //if crypto.PubkeyToAddress(*pub_ec).String()!=addr {
+    //    return ErrSASLNotAuthorized
+    //}
+    
+    //crypto.Ch
+    
+    pub_ec,err:=crypto.DecompressPubkey(params.pubKey)
+    if err !=nil {
+        fmt.Println(err)
+    }
+    
+    pub_ec,err=crypto.UnmarshalPubkey(params.pubKey)
+    if err !=nil {
+        fmt.Println(err)
+    }
+    if crypto.PubkeyToAddress(*pub_ec).String()!=params.username {
         return ErrSASLNotAuthorized
     }
     
@@ -206,7 +234,7 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //}
     
     // authenticated... compute and send server response
-    sig.stm.SendElement(xml.NewElementNamespace("success", saslNamespace))
+    sig.stm.SendElement(xml.NewElementNamespace("success", nonSaslNamespace))
     
     sig.username = user.Username
     sig.authenticated=true

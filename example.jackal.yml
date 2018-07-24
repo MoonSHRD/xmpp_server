@@ -14,7 +14,7 @@ storage:
   mysql:
     host: 127.0.0.1:3306
     user: jackal
-    password: password
+    password: yeba
     database: jackal
     pool_size: 16
 
@@ -77,10 +77,12 @@ virtual_hosts:
       - scram_sha_1
       - scram_sha_256
 
+    non_sasl: sign
+
 s2s:
   enabled: false
 
-  dial_timeout: 15
+  dial_timeout: 60
   dialback_secret: s3cr3tf0rd14lb4ck
   max_stanza_size: 131072
 
