@@ -8,7 +8,6 @@ import (
     "fmt"
     "strings"
     "github.com/ortuman/jackal/model"
-    "github.com/ethereum/go-ethereum/crypto"
 )
 
 type signState int
@@ -28,7 +27,7 @@ type Sign struct {
 type signParameters struct {
     username  string
     realm     string
-    nonce     []byte
+    nonce     string
     cnonce    string
     nc        string
     qop       string
@@ -37,8 +36,8 @@ type signParameters struct {
     response  string
     charset   string
     authID    string
-    signature []byte
-    pubKey    []byte
+    signature string
+    pubKey    string
 }
 
 func (r *signParameters) setParameter(p string) {
@@ -54,7 +53,7 @@ func (r *signParameters) setParameter(p string) {
     case "realm":
         r.realm = val
     case "nonce":
-        r.nonce = []byte(val)
+        r.nonce = val
     case "cnonce":
         r.cnonce = val
     case "nc":
@@ -72,9 +71,9 @@ func (r *signParameters) setParameter(p string) {
     case "authzid":
         r.authID = val
     case "signature":
-        r.signature = []byte(val)
+        r.signature = val
     case "pubKey":
-        r.pubKey = []byte(val)
+        r.pubKey = val
     }
 }
 
@@ -175,6 +174,14 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //    return ErrSASLNotAuthorized
     //}
     
+    addr,err:=util.CheckSign(params.nonce,params.signature)
+    if err!=nil{
+        return ErrSASLNotAuthorized
+    }
+    if params.username!=addr {
+        return ErrSASLNotAuthorized
+    }
+    
     //validate pub_key
     //crypto.UnmarshalPubkey(params.pubKey)
     
@@ -196,23 +203,23 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     
     //crypto.Ch
     
-    pub_ec,err:=crypto.DecompressPubkey(params.pubKey)
-    if err !=nil {
-        fmt.Println(err)
-    }
-    
-    pub_ec,err=crypto.UnmarshalPubkey(params.pubKey)
-    if err !=nil {
-        fmt.Println(err)
-    }
-    if crypto.PubkeyToAddress(*pub_ec).String()!=params.username {
-        return ErrSASLNotAuthorized
-    }
-    
-    //validate sign
-    if !crypto.VerifySignature(params.pubKey,params.nonce,params.signature) {
-        return ErrSASLNotAuthorized
-    }
+    //pub_ec,err:=crypto.DecompressPubkey(params.pubKey)
+    //if err !=nil {
+    //    fmt.Println(err)
+    //}
+    //
+    //pub_ec,err=crypto.UnmarshalPubkey(params.pubKey)
+    //if err !=nil {
+    //    fmt.Println(err)
+    //}
+    //if crypto.PubkeyToAddress(*pub_ec).String()!=params.username {
+    //    return ErrSASLNotAuthorized
+    //}
+    //
+    ////validate sign
+    //if !crypto.VerifySignature(params.pubKey,params.nonce,params.signature) {
+    //    return ErrSASLNotAuthorized
+    //}
     
     //// validate user
     //user, err := storage.Instance().FetchUser(params.username)

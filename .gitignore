@@ -37,3 +37,6 @@ server.crt
 
 # Dep
 Gopkg.lock
+
+#node
+node_modules/
