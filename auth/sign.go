@@ -8,8 +8,6 @@ import (
     "fmt"
     "strings"
     "github.com/ortuman/jackal/model"
-    "bytes"
-    "encoding/hex"
     "github.com/ortuman/jackal/storage"
     "errors"
     "log"
@@ -33,18 +31,20 @@ type Sign struct {
 
 type signParameters struct {
     username  string
+    firstname  string
+    lastname  string
     realm     string
     nonce     string
-    cnonce    string
-    nc        string
+    //cnonce    string
+    //nc        string
     qop       string
     servType  string
-    digestURI string
-    response  string
+    //digestURI string
+    //response  string
     charset   string
-    authID    string
+    //authID    string
     signature string
-    pubKey    string
+    //pubKey    string
 }
 
 func (r *signParameters) setParameter(p string) {
@@ -61,26 +61,28 @@ func (r *signParameters) setParameter(p string) {
         r.realm = val
     case "nonce":
         r.nonce = val
-    case "cnonce":
-        r.cnonce = val
-    case "nc":
-        r.nc = val
+    //case "cnonce":
+    //    r.cnonce = val
+    //case "nc":
+    //    r.nc = val
     case "qop":
         r.qop = val
     case "serv-type":
         r.servType = val
-    case "digest-uri":
-        r.digestURI = val
-    case "response":
-        r.response = val
+    //case "digest-uri":
+    //    r.digestURI = val
+    //case "response":
+    //    r.response = val
     case "charset":
         r.charset = val
-    case "authzid":
-        r.authID = val
+    //case "authzid":
+    //    r.authID = val
     case "signature":
         r.signature = val
-    case "pubKey":
-        r.pubKey = val
+    case "firstname":
+        r.firstname = val
+    case "lastname":
+        r.lastname = val
     }
 }
 
@@ -143,7 +145,12 @@ func (sig *Sign) ProcessElement(elem xml.XElement) error {
 
 func (sig *Sign) handleStart(elem xml.XElement) error {
     domain := sig.stm.Domain()
+    
+    username:=strings.ToLower(elem.Text())
     nonce := base64.StdEncoding.EncodeToString(util.RandomBytes(32))
+    
+    storage.Instance().SaveUserNonce(username,nonce)
+    
     chnge := fmt.Sprintf(`realm="%s",nonce="%s",qop="auth",charset=utf-8,algorithm=eth-sign`, domain, nonce)
     
     respElem := xml.NewElementNamespace("challenge", nonSaslNamespace)
@@ -154,38 +161,7 @@ func (sig *Sign) handleStart(elem xml.XElement) error {
     return nil
 }
 
-func (d *Sign) computeResponse(params *signParameters, user *model.User, asClient bool) string {
-    x := params.username + ":" + params.realm + ":" + user.Password
-    y := []byte(x)
-    
-    a1 := bytes.NewBuffer(y)
-    a1.WriteString(":" + params.nonce + ":" + params.cnonce)
-    if len(params.authID) > 0 {
-        a1.WriteString(":" + params.authID)
-    }
-    
-    var c string
-    if asClient {
-        c = "AUTHENTICATE"
-    } else {
-        c = ""
-    }
-    a2 := bytes.NewBuffer([]byte(c))
-    a2.WriteString(":" + params.digestURI)
-    
-    ha1 := hex.EncodeToString(a1.Bytes())
-    ha2 := hex.EncodeToString(a2.Bytes())
-    
-    kd := ha1
-    kd += ":" + params.nonce
-    kd += ":" + params.nc
-    kd += ":" + params.cnonce
-    kd += ":" + params.qop
-    kd += ":" + ha2
-    return hex.EncodeToString([]byte(kd))
-}
-
-func (sig *Sign) handleUser(name,pass string) (model.User,error) {
+func (sig *Sign) handleUser(name,firstname,lastname string) (model.User,error) {
     if name=="" {
         err:=errors.New("empty name")
         return model.User{},err
@@ -202,20 +178,21 @@ func (sig *Sign) handleUser(name,pass string) (model.User,error) {
         }
         return *user,nil
     }
-    user,err:=sig.registerUser(name,pass)
+    user,err:=sig.registerUser(name,firstname,lastname)
     if err != nil {
         return model.User{},err
     }
     return user,nil
 }
 
-func (sig *Sign) registerUser(name,pass string) (model.User,error) {
+func (sig *Sign) registerUser(name,firstname,lastname string) (model.User,error) {
     
     jFrom, _ := jid.New("user", "localhost", "", true)
     //jTo, _ := jid.New("user", "localhost", "", true)
     user := model.User{
         Username:           name,
-        Password:           pass,
+        Firstname:          firstname,
+        Lastname:           lastname,
         LastPresence:       xml.NewPresence(jFrom,jFrom,"unavailable"),
         LastPresenceAt:     time.Now(),
     }
@@ -252,11 +229,15 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //    return ErrSASLNotAuthorized
     //}
     
-    addr,err:=util.CheckSign(params.nonce,params.signature)
+    nonce,err:=storage.Instance().LoadUserNonce(params.username)
     if err!=nil{
         return ErrSASLNotAuthorized
     }
-    if params.username!=addr {
+    addr,err:=util.CheckSign(nonce,params.signature)
+    if err!=nil{
+        return ErrSASLNotAuthorized
+    }
+    if strings.ToLower(params.username)!=strings.ToLower(addr) {
         return ErrSASLNotAuthorized
     }
     
@@ -312,7 +293,7 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //user.Username=strings.ToLower(params.username)
     //user.Password=""
     
-    user,err:=sig.handleUser(params.username,"")
+    user,err:=sig.handleUser(params.username,params.firstname,params.lastname)
     
     if err != nil {
         log.Print(err)

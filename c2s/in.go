@@ -21,7 +21,7 @@ import (
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/module/xep0049"
 	"github.com/ortuman/jackal/module/xep0054"
-	"github.com/ortuman/jackal/module/xep0077"
+	//"github.com/ortuman/jackal/module/xep0077"
 	"github.com/ortuman/jackal/module/xep0092"
 	"github.com/ortuman/jackal/module/xep0191"
 	"github.com/ortuman/jackal/module/xep0199"
@@ -64,7 +64,7 @@ type modules struct {
 	discoInfo    *xep0030.DiscoInfo
 	private      *xep0049.Private
 	vCard        *xep0054.VCard
-	register     *xep0077.Register
+	//register     *xep0077.Register
 	version      *xep0092.Version
 	blockingCmd  *xep0191.BlockingCommand
 	ping         *xep0199.Ping
@@ -203,29 +203,29 @@ func (s *inStream) Disconnect(err error) {
 }
 
 func (s *inStream) initializeAuthenticators() {
-	tr := s.cfg.transport
-	var authenticators []auth.Authenticator
-	for _, a := range s.cfg.sasl {
-		switch a {
-		case "plain":
-			authenticators = append(authenticators, auth.NewPlain(s))
-
-		case "digest_md5":
-			authenticators = append(authenticators, auth.NewDigestMD5(s))
-
-		//case "sign":
-		//	authenticators = append(authenticators, auth.NewSign(s))
-
-		case "scram_sha_1":
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, false))
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, true))
-
-		case "scram_sha_256":
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, false))
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, true))
-		}
-	}
-	s.sasl_authenticators = authenticators
+	//tr := s.cfg.transport
+	//var authenticators []auth.Authenticator
+	//for _, a := range s.cfg.sasl {
+	//	switch a {
+	//	case "plain":
+	//		authenticators = append(authenticators, auth.NewPlain(s))
+    //
+	//	case "digest_md5":
+	//		authenticators = append(authenticators, auth.NewDigestMD5(s))
+    //
+	//	//case "sign":
+	//	//	authenticators = append(authenticators, auth.NewSign(s))
+    //
+	//	case "scram_sha_1":
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, false))
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, true))
+    //
+	//	case "scram_sha_256":
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, false))
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, true))
+	//	}
+	//}
+	//s.sasl_authenticators = authenticators
 	s.non_sasl_authenticator = auth.NewSign(s)
 }
 
@@ -264,11 +264,11 @@ func (s *inStream) initializeModules() {
 	}
 
 	// XEP-0077: In-band registration (https://xmpp.org/extensions/xep-0077.html)
-	if _, ok := s.cfg.modules.Enabled["registration"]; ok {
-		mods.register = xep0077.New(&s.cfg.modules.Registration, s)
-		mods.iqHandlers = append(mods.iqHandlers, mods.register)
-		mods.all = append(mods.all, mods.register)
-	}
+	//if _, ok := s.cfg.modules.Enabled["registration"]; ok {
+	//	mods.register = xep0077.New(&s.cfg.modules.Registration, s)
+	//	mods.iqHandlers = append(mods.iqHandlers, mods.register)
+	//	mods.all = append(mods.all, mods.register)
+	//}
 
 	// XEP-0092: Software Version (https://xmpp.org/extensions/xep-0092.html)
 	if _, ok := s.cfg.modules.Enabled["version"]; ok {
@@ -376,12 +376,12 @@ func (s *inStream) unauthenticatedFeatures() []xml.XElement {
 	}
 
 	// allow In-band registration over encrypted stream only
-	allowRegistration := s.IsSecured()
+	//allowRegistration := s.IsSecured()
 
-	if reg := s.mods.register; reg != nil && allowRegistration {
-		registerFeature := xml.NewElementNamespace("register", "http://jabber.org/features/iq-register")
-		features = append(features, registerFeature)
-	}
+	//if reg := s.mods.register; reg != nil && allowRegistration {
+	//	registerFeature := xml.NewElementNamespace("register", "http://jabber.org/features/iq-register")
+	//	features = append(features, registerFeature)
+	//}
 	
     auth_fe := xml.NewElementName("auth")
     auth_fe.SetNamespace(nonSaslNamespace)
@@ -429,14 +429,11 @@ func (s *inStream) handleConnected(elem xml.XElement) {
 
 	case "iq":
 		iq := elem.(*xml.IQ)
-		if reg := s.mods.register; reg.MatchesIQ(iq) {
-			reg.ProcessIQ(iq)
-			return
-		} else if iq.Elements().ChildNamespace("query", "jabber:iq:auth") != nil {
-			// don't allow non-SASL authentication
-			s.writeElement(iq.ServiceUnavailableError())
-			return
-		}
+        if iq.Elements().ChildNamespace("query", "jabber:iq:auth") != nil {
+            // don't allow non-SASL authentication
+            s.writeElement(iq.ServiceUnavailableError())
+            return
+        }
 		fallthrough
 
 	case "message", "presence":

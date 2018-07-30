@@ -14,6 +14,7 @@ import (
 	"github.com/ortuman/jackal/model"
 	"github.com/ortuman/jackal/xml"
 	"github.com/ortuman/jackal/xml/jid"
+    "errors"
 )
 
 // InsertOrUpdateUser inserts a new user entity into storage,
@@ -26,8 +27,8 @@ func (s *Storage) InsertOrUpdateUser(u *model.User) error {
 		presenceXML = buf.String()
 		s.pool.Put(buf)
 	}
-	columns := []string{"username", "password", "updated_at", "created_at"}
-	values := []interface{}{u.Username, u.Password, nowExpr, nowExpr}
+	columns := []string{"username", "firstname", "lastname", "updated_at", "created_at"}
+	values := []interface{}{u.Username, u.Firstname, u.Lastname, nowExpr, nowExpr}
 
 	if len(presenceXML) > 0 {
 		columns = append(columns, []string{"last_presence", "last_presence_at"}...)
@@ -36,11 +37,11 @@ func (s *Storage) InsertOrUpdateUser(u *model.User) error {
 	var suffix string
 	var suffixArgs []interface{}
 	if len(presenceXML) > 0 {
-		suffix = "ON DUPLICATE KEY UPDATE password = ?, last_presence = ?, last_presence_at = NOW(), updated_at = NOW()"
-		suffixArgs = []interface{}{u.Password, presenceXML}
+		suffix = "ON DUPLICATE KEY UPDATE firstname = ?, lastname = ?, last_presence = ?, last_presence_at = NOW(), updated_at = NOW()"
+		suffixArgs = []interface{}{u.Firstname, u.Lastname, presenceXML}
 	} else {
-		suffix = "ON DUPLICATE KEY UPDATE password = ?, updated_at = NOW()"
-		suffixArgs = []interface{}{u.Password}
+		suffix = "ON DUPLICATE KEY UPDATE firstname = ?, lastname = ?, updated_at = NOW()"
+		suffixArgs = []interface{}{u.Firstname, u.Lastname}
 	}
 	q := sq.Insert("users").
 		Columns(columns...).
@@ -52,7 +53,7 @@ func (s *Storage) InsertOrUpdateUser(u *model.User) error {
 
 // FetchUser retrieves from storage a user entity.
 func (s *Storage) FetchUser(username string) (*model.User, error) {
-	q := sq.Select("username", "password", "last_presence", "last_presence_at").
+	q := sq.Select("username", "firstname", "lastname", "last_presence", "last_presence_at").
 		From("users").
 		Where(sq.Eq{"username": username})
 
@@ -60,7 +61,7 @@ func (s *Storage) FetchUser(username string) (*model.User, error) {
 	var presenceAt time.Time
 	var usr model.User
 
-	err := q.RunWith(s.db).QueryRow().Scan(&usr.Username, &usr.Password, &presenceXML, &presenceAt)
+	err := q.RunWith(s.db).QueryRow().Scan(&usr.Username, &usr.Firstname, &usr.Lastname, &presenceXML, &presenceAt)
 	switch err {
 	case nil:
 		if len(presenceXML) > 0 {
@@ -125,4 +126,48 @@ func (s *Storage) UserExists(username string) (bool, error) {
 	default:
 		return false, err
 	}
+}
+
+// UserExists returns whether or not a user exists within storage.
+func (s *Storage) SaveUserNonce(username,nonce string) (error) {
+    columns := []string{"nonce", "username", "created_at"}
+    values := []interface{}{nonce, username, nowExpr}
+    
+    var suffix string
+    var suffixArgs []interface{}
+    suffix = "ON DUPLICATE KEY UPDATE nonce = ?, created_at = NOW()"
+    suffixArgs = []interface{}{nonce}
+    
+    q := sq.Insert("auth_nonce").
+        Columns(columns...).
+        Values(values...).
+        Suffix(suffix, suffixArgs...)
+    _, err := q.RunWith(s.db).Exec()
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+// UserExists returns whether or not a user exists within storage.
+func (s *Storage) LoadUserNonce(username string) (string,error) {
+	q := sq.Select("nonce", "created_at").From("auth_nonce").Where(sq.Eq{"username": username})
+	
+	var nonce string
+	var created_at time.Time
+    
+    err := q.RunWith(s.db).QueryRow().Scan(&nonce,&created_at)
+    switch err {
+    case nil:
+        if nonce=="" {
+            return "", errors.New("nonce is empty")
+        }
+        duration := time.Since(created_at)
+        if duration.Minutes()>5 {
+            return "", errors.New("too late, retry auth")
+        }
+        return nonce,nil
+    default:
+        return "", err
+    }
 }

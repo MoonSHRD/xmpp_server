@@ -11,8 +11,7 @@ import (
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/model"
 	"github.com/ortuman/jackal/model/rostermodel"
-	"github.com/ortuman/jackal/storage/badgerdb"
-	"github.com/ortuman/jackal/storage/memstorage"
+	_ "github.com/ortuman/jackal/storage/badgerdb"
 	"github.com/ortuman/jackal/storage/sql"
 	"github.com/ortuman/jackal/xml"
 )
@@ -60,6 +59,9 @@ type rosterStorage interface {
 	// FetchRosterNotifications retrieves from storage all roster notifications
 	// associated to a given user.
 	FetchRosterNotifications(contact string) ([]rostermodel.Notification, error)
+    
+    SaveUserNonce(username,nonce string) (error)
+    LoadUserNonce(nonce string) (string,error)
 }
 
 type offlineStorage interface {
@@ -136,12 +138,12 @@ func Initialize(cfg *Config) {
 		return
 	}
 	switch cfg.Type {
-	case BadgerDB:
-		inst = badgerdb.New(cfg.BadgerDB)
+	//case BadgerDB:
+	//	inst = badgerdb.New(cfg.BadgerDB)
 	case MySQL:
 		inst = sql.New(cfg.MySQL)
-	case Memory:
-		inst = memstorage.New()
+	//case Memory:
+	//	inst = memstorage.New()
 	default:
 		// should not be reached
 		break
@@ -169,26 +171,26 @@ func Shutdown() {
 	initialized = false
 }
 
-// ActivateMockedError forces the return of ErrMockedError from current storage manager.
-// This method should only be used for testing purposes.
-func ActivateMockedError() {
-	instMu.Lock()
-	defer instMu.Unlock()
-
-	switch inst := inst.(type) {
-	case *memstorage.Storage:
-		inst.ActivateMockedError()
-	}
-}
-
-// DeactivateMockedError disables mocked storage error from a previous activation.
-// This method should only be used for testing purposes.
-func DeactivateMockedError() {
-	instMu.Lock()
-	defer instMu.Unlock()
-
-	switch inst := inst.(type) {
-	case *memstorage.Storage:
-		inst.DeactivateMockedError()
-	}
-}
+//// ActivateMockedError forces the return of ErrMockedError from current storage manager.
+//// This method should only be used for testing purposes.
+//func ActivateMockedError() {
+//	instMu.Lock()
+//	defer instMu.Unlock()
+//
+//	switch inst := inst.(type) {
+//	case *memstorage.Storage:
+//		inst.ActivateMockedError()
+//	}
+//}
+//
+//// DeactivateMockedError disables mocked storage error from a previous activation.
+//// This method should only be used for testing purposes.
+//func DeactivateMockedError() {
+//	instMu.Lock()
+//	defer instMu.Unlock()
+//
+//	switch inst := inst.(type) {
+//	case *memstorage.Storage:
+//		inst.DeactivateMockedError()
+//	}
+//}

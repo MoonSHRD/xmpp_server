@@ -5,13 +5,11 @@
 
 CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(256) PRIMARY KEY,
-    firstname VARCHAR(256) NOT NULL,
-    lastname VARCHAR(256) NOT NULL,
-     last_presence TEXT NOT NULL,
-     last_presence_at DATETIME NOT NULL,
-     updated_at DATETIME NOT NULL,
-     created_at DATETIME NOT NULL,
-    UNIQUE (username)
+    password TEXT NOT NULL,
+    last_presence TEXT NOT NULL,
+    last_presence_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE roster_notifications (
@@ -84,10 +82,3 @@ CREATE TABLE IF NOT EXISTS offline_messages (
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE INDEX i_offline_messages_username ON offline_messages(username);
-
-
-CREATE TABLE IF NOT EXISTS auth_nonce (
-  username VARCHAR(256) PRIMARY KEY,
-  nonce TEXT NOT NULL,
-  created_at DATETIME NOT NULL
-) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
