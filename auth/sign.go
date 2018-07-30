@@ -8,6 +8,13 @@ import (
     "fmt"
     "strings"
     "github.com/ortuman/jackal/model"
+    "bytes"
+    "encoding/hex"
+    "github.com/ortuman/jackal/storage"
+    "errors"
+    "log"
+    "time"
+    "github.com/ortuman/jackal/xml/jid"
 )
 
 type signState int
@@ -147,6 +154,77 @@ func (sig *Sign) handleStart(elem xml.XElement) error {
     return nil
 }
 
+func (d *Sign) computeResponse(params *signParameters, user *model.User, asClient bool) string {
+    x := params.username + ":" + params.realm + ":" + user.Password
+    y := []byte(x)
+    
+    a1 := bytes.NewBuffer(y)
+    a1.WriteString(":" + params.nonce + ":" + params.cnonce)
+    if len(params.authID) > 0 {
+        a1.WriteString(":" + params.authID)
+    }
+    
+    var c string
+    if asClient {
+        c = "AUTHENTICATE"
+    } else {
+        c = ""
+    }
+    a2 := bytes.NewBuffer([]byte(c))
+    a2.WriteString(":" + params.digestURI)
+    
+    ha1 := hex.EncodeToString(a1.Bytes())
+    ha2 := hex.EncodeToString(a2.Bytes())
+    
+    kd := ha1
+    kd += ":" + params.nonce
+    kd += ":" + params.nc
+    kd += ":" + params.cnonce
+    kd += ":" + params.qop
+    kd += ":" + ha2
+    return hex.EncodeToString([]byte(kd))
+}
+
+func (sig *Sign) handleUser(name,pass string) (model.User,error) {
+    if name=="" {
+        err:=errors.New("empty name")
+        return model.User{},err
+    }
+    name=strings.ToLower(name)
+    exists, err := storage.Instance().UserExists(name)
+    if err != nil {
+        return model.User{},err
+    }
+    if exists {
+        user,err:=storage.Instance().FetchUser(name)
+        if err != nil {
+            return model.User{},err
+        }
+        return *user,nil
+    }
+    user,err:=sig.registerUser(name,pass)
+    if err != nil {
+        return model.User{},err
+    }
+    return user,nil
+}
+
+func (sig *Sign) registerUser(name,pass string) (model.User,error) {
+    
+    jFrom, _ := jid.New("user", "localhost", "", true)
+    //jTo, _ := jid.New("user", "localhost", "", true)
+    user := model.User{
+        Username:           name,
+        Password:           pass,
+        LastPresence:       xml.NewPresence(jFrom,jFrom,"unavailable"),
+        LastPresenceAt:     time.Now(),
+    }
+    if err := storage.Instance().InsertOrUpdateUser(&user); err != nil {
+        return model.User{},err
+    }
+    return user,nil
+}
+
 func (sig *Sign) handleChallenged(elem xml.XElement) error {
     if len(elem.Text()) == 0 {
         return ErrSASLMalformedRequest
@@ -230,9 +308,16 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //	return ErrSASLNotAuthorized
     //}
     //jid:=jid2.JID{domain:"localhost"}
-    user:=new(model.User)//{"govno","123"}
-    user.Username=params.username
-    user.Password=""
+    //user:=new(model.User)//{"govno","123"}
+    //user.Username=strings.ToLower(params.username)
+    //user.Password=""
+    
+    user,err:=sig.handleUser(params.username,"")
+    
+    if err != nil {
+        log.Print(err)
+        return ErrSASLNotAuthorized
+    }
     
     ////validate response
     //clientResp := d.computeResponse(params, user, true)
@@ -240,8 +325,15 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //	return ErrSASLNotAuthorized
     //}
     
+    
+    //serverResp := sig.computeResponse(params, user, false)
+    //respAuth := fmt.Sprintf("rspauth=%s", serverResp)
+    
+    
     // authenticated... compute and send server response
-    sig.stm.SendElement(xml.NewElementNamespace("success", nonSaslNamespace))
+    respElem := xml.NewElementNamespace("success", nonSaslNamespace)
+    //respElem.SetText(base64.StdEncoding.EncodeToString([]byte(respAuth)))
+    sig.stm.SendElement(respElem)
     
     sig.username = user.Username
     sig.authenticated=true

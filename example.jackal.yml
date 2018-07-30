@@ -51,7 +51,7 @@ modules:
     show_os: true
 
   mod_ping:
-    send: no
+    send: yes
     send_interval: 60
 
 virtual_hosts:
