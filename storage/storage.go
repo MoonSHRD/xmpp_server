@@ -31,6 +31,17 @@ type userStorage interface {
 	UserExists(username string) (bool, error)
 }
 
+type chatStorage interface {
+	InsertOrUpdateChat(user *model.User) error
+	InsertOrUpdateChatMessage(user *model.User) error
+	DeleteChat(user *model.User) error
+	GetChatUpdates(user *model.User) error
+    InsertChatUser(user *model.User) error
+	DeleteChatUser(username string) error
+	FetchUser(username string) (*model.User, error)
+	UserExists(username string) (bool, error)
+}
+
 type rosterStorage interface {
 	// InsertOrUpdateRosterItem inserts a new roster item entity into storage,
 	// or updates it in case it's been previously inserted.
