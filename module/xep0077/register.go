@@ -131,7 +131,7 @@ func (x *Register) registerNewUser(iq *xml.IQ, query xml.XElement) {
 	}
 	user := model.User{
 		Username: userEl.Text(),
-		Password: passwordEl.Text(),
+		//Password: passwordEl.Text(),
 	}
 	if err := storage.Instance().InsertOrUpdateUser(&user); err != nil {
 		log.Errorf("%v", err)
@@ -183,14 +183,14 @@ func (x *Register) changePassword(password string, username string, iq *xml.IQ) 
 		x.stm.SendElement(iq.ResultIQ())
 		return
 	}
-	if user.Password != password {
-		user.Password = password
-		if err := storage.Instance().InsertOrUpdateUser(user); err != nil {
-			log.Error(err)
-			x.stm.SendElement(iq.InternalServerError())
-			return
-		}
-	}
+	//if user.Password != password {
+	//	user.Password = password
+	//	if err := storage.Instance().InsertOrUpdateUser(user); err != nil {
+	//		log.Error(err)
+	//		x.stm.SendElement(iq.InternalServerError())
+	//		return
+	//	}
+	//}
 	x.stm.SendElement(iq.ResultIQ())
 }
 
