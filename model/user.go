@@ -15,16 +15,17 @@ import (
 
 // User represents a user storage entity.
 type User struct {
-	Username       string
-	Password       string
-	LastPresence   *xml.Presence
-	LastPresenceAt time.Time
+	Username        string
+	Firstname       string
+	Lastname        string
+	LastPresence    *xml.Presence
+	LastPresenceAt  time.Time
 }
 
 // FromGob deserializes a User entity from it's gob binary representation.
 func (u *User) FromGob(dec *gob.Decoder) {
 	dec.Decode(&u.Username)
-	dec.Decode(&u.Password)
+	//dec.Decode(&u.Password)
 	var hasPresence bool
 	dec.Decode(&hasPresence)
 	if hasPresence {
@@ -42,7 +43,7 @@ func (u *User) FromGob(dec *gob.Decoder) {
 // ToGob converts a User entity to it's gob binary representation.
 func (u *User) ToGob(enc *gob.Encoder) {
 	enc.Encode(&u.Username)
-	enc.Encode(&u.Password)
+	//enc.Encode(&u.Password)
 	hasPresence := u.LastPresence != nil
 	enc.Encode(&hasPresence)
 	if hasPresence {

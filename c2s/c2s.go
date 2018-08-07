@@ -21,6 +21,7 @@ const (
 	bindNamespace             = "urn:ietf:params:xml:ns:xmpp-bind"
 	sessionNamespace          = "urn:ietf:params:xml:ns:xmpp-session"
 	saslNamespace             = "urn:ietf:params:xml:ns:xmpp-sasl"
+    nonSaslNamespace          = "jabber:iq:auth"
 	blockedErrorNamespace     = "urn:xmpp:blocking:errors"
 )
 

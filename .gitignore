@@ -37,3 +37,9 @@ server.crt
 
 # Dep
 Gopkg.lock
+
+# Node
+node_modules/
+
+# Jackal config
+jackal.yml

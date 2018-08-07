@@ -21,7 +21,7 @@ import (
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/module/xep0049"
 	"github.com/ortuman/jackal/module/xep0054"
-	"github.com/ortuman/jackal/module/xep0077"
+	//"github.com/ortuman/jackal/module/xep0077"
 	"github.com/ortuman/jackal/module/xep0092"
 	"github.com/ortuman/jackal/module/xep0191"
 	"github.com/ortuman/jackal/module/xep0199"
@@ -64,7 +64,7 @@ type modules struct {
 	discoInfo    *xep0030.DiscoInfo
 	private      *xep0049.Private
 	vCard        *xep0054.VCard
-	register     *xep0077.Register
+	//register     *xep0077.Register
 	version      *xep0092.Version
 	blockingCmd  *xep0191.BlockingCommand
 	ping         *xep0199.Ping
@@ -73,17 +73,18 @@ type modules struct {
 }
 
 type inStream struct {
-	cfg            *streamConfig
-	sess           *session.Session
-	id             string
-	connectTm      *time.Timer
-	state          uint32
-	ctx            stream.Context
-	authenticators []auth.Authenticator
-	activeAuth     auth.Authenticator
-	mods           modules
-	actorCh        chan func()
-	doneCh         chan<- struct{}
+	cfg                         *streamConfig
+	sess                        *session.Session
+	id                          string
+	connectTm                   *time.Timer
+	state                       uint32
+	ctx                         stream.Context
+	sasl_authenticators         []auth.Authenticator
+	non_sasl_authenticator      auth.Authenticator
+	activeAuth                  auth.Authenticator
+	mods                        modules
+	actorCh                     chan func()
+	doneCh                      chan<- struct{}
 }
 
 func newStream(id string, cfg *streamConfig) stream.C2S {
@@ -104,7 +105,7 @@ func newStream(id string, cfg *streamConfig) stream.C2S {
 	j, _ := jid.New("", "", "", true)
 	s.ctx.SetObject(j, jidCtxKey)
 
-	// initialize authenticators
+	// initialize sasl_authenticators
 	s.initializeAuthenticators()
 
 	// initialize modules
@@ -202,29 +203,30 @@ func (s *inStream) Disconnect(err error) {
 }
 
 func (s *inStream) initializeAuthenticators() {
-	tr := s.cfg.transport
-	var authenticators []auth.Authenticator
-	for _, a := range s.cfg.sasl {
-		switch a {
-		case "plain":
-			authenticators = append(authenticators, auth.NewPlain(s))
-
-		case "digest_md5":
-			authenticators = append(authenticators, auth.NewDigestMD5(s))
-
-		case "sign":
-			authenticators = append(authenticators, auth.NewSign(s))
-
-		case "scram_sha_1":
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, false))
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, true))
-
-		case "scram_sha_256":
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, false))
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, true))
-		}
-	}
-	s.authenticators = authenticators
+	//tr := s.cfg.transport
+	//var authenticators []auth.Authenticator
+	//for _, a := range s.cfg.sasl {
+	//	switch a {
+	//	case "plain":
+	//		authenticators = append(authenticators, auth.NewPlain(s))
+    //
+	//	case "digest_md5":
+	//		authenticators = append(authenticators, auth.NewDigestMD5(s))
+    //
+	//	//case "sign":
+	//	//	authenticators = append(authenticators, auth.NewSign(s))
+    //
+	//	case "scram_sha_1":
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, false))
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, true))
+    //
+	//	case "scram_sha_256":
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, false))
+	//		authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, true))
+	//	}
+	//}
+	//s.sasl_authenticators = authenticators
+	s.non_sasl_authenticator = auth.NewSign(s)
 }
 
 func (s *inStream) initializeModules() {
@@ -262,11 +264,11 @@ func (s *inStream) initializeModules() {
 	}
 
 	// XEP-0077: In-band registration (https://xmpp.org/extensions/xep-0077.html)
-	if _, ok := s.cfg.modules.Enabled["registration"]; ok {
-		mods.register = xep0077.New(&s.cfg.modules.Registration, s)
-		mods.iqHandlers = append(mods.iqHandlers, mods.register)
-		mods.all = append(mods.all, mods.register)
-	}
+	//if _, ok := s.cfg.modules.Enabled["registration"]; ok {
+	//	mods.register = xep0077.New(&s.cfg.modules.Registration, s)
+	//	mods.iqHandlers = append(mods.iqHandlers, mods.register)
+	//	mods.all = append(mods.all, mods.register)
+	//}
 
 	// XEP-0092: Software Version (https://xmpp.org/extensions/xep-0092.html)
 	if _, ok := s.cfg.modules.Enabled["version"]; ok {
@@ -362,10 +364,10 @@ func (s *inStream) unauthenticatedFeatures() []xml.XElement {
 	// attach SASL mechanisms
 	shouldOfferSASL := (!isSocketTr || (isSocketTr && s.IsSecured()))
 
-	if shouldOfferSASL && len(s.authenticators) > 0 {
+	if shouldOfferSASL && len(s.sasl_authenticators) > 0 {
 		mechanisms := xml.NewElementName("mechanisms")
 		mechanisms.SetNamespace(saslNamespace)
-		for _, athr := range s.authenticators {
+		for _, athr := range s.sasl_authenticators {
 			mechanism := xml.NewElementName("mechanism")
 			mechanism.SetText(athr.Mechanism())
 			mechanisms.AppendElement(mechanism)
@@ -374,12 +376,17 @@ func (s *inStream) unauthenticatedFeatures() []xml.XElement {
 	}
 
 	// allow In-band registration over encrypted stream only
-	allowRegistration := s.IsSecured()
+	//allowRegistration := s.IsSecured()
 
-	if reg := s.mods.register; reg != nil && allowRegistration {
-		registerFeature := xml.NewElementNamespace("register", "http://jabber.org/features/iq-register")
-		features = append(features, registerFeature)
-	}
+	//if reg := s.mods.register; reg != nil && allowRegistration {
+	//	registerFeature := xml.NewElementNamespace("register", "http://jabber.org/features/iq-register")
+	//	features = append(features, registerFeature)
+	//}
+	
+    auth_fe := xml.NewElementName("auth")
+    auth_fe.SetNamespace(nonSaslNamespace)
+	features = append(features, auth_fe)
+	
 	return features
 }
 
@@ -422,14 +429,11 @@ func (s *inStream) handleConnected(elem xml.XElement) {
 
 	case "iq":
 		iq := elem.(*xml.IQ)
-		if reg := s.mods.register; reg.MatchesIQ(iq) {
-			reg.ProcessIQ(iq)
-			return
-		} else if iq.Elements().ChildNamespace("query", "jabber:iq:auth") != nil {
-			// don't allow non-SASL authentication
-			s.writeElement(iq.ServiceUnavailableError())
-			return
-		}
+        if iq.Elements().ChildNamespace("query", "jabber:iq:auth") != nil {
+            // don't allow non-SASL authentication
+            s.writeElement(iq.ServiceUnavailableError())
+            return
+        }
 		fallthrough
 
 	case "message", "presence":
@@ -441,15 +445,26 @@ func (s *inStream) handleConnected(elem xml.XElement) {
 }
 
 func (s *inStream) handleAuthenticating(elem xml.XElement) {
-	if elem.Namespace() != saslNamespace {
-		s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
-		return
-	}
-	authr := s.activeAuth
-	s.continueAuthentication(elem, authr)
-	if authr.Authenticated() {
-		s.finishAuthentication(authr.Username())
-	}
+    switch elem.Namespace() {
+        case saslNamespace:
+            authr := s.activeAuth
+            s.continueAuthentication(elem, authr)
+            if authr.Authenticated() {
+                s.finishAuthentication(authr.Username())
+            }
+            break
+        case nonSaslNamespace:
+            authr := s.activeAuth
+            s.continueAuthentication(elem, authr)
+            if authr.Authenticated() {
+                s.finishAuthentication(authr.Username())
+            }
+            break
+        default:
+            s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
+            break
+    }
+    return
 }
 
 func (s *inStream) handleAuthenticated(elem xml.XElement) {
@@ -540,12 +555,58 @@ func (s *inStream) compress(elem xml.XElement) {
 }
 
 func (s *inStream) startAuthentication(elem xml.XElement) {
+    switch elem.Namespace() {
+        case saslNamespace:
+            mechanism := elem.Attributes().Get("mechanism")
+            for _, authr := range s.sasl_authenticators {
+                if authr.Mechanism() == mechanism {
+                    if err := s.continueAuthentication(elem, authr); err != nil {
+                        return
+                    }
+                    if authr.Authenticated() {
+                        s.finishAuthentication(authr.Username())
+                    } else {
+                        s.activeAuth = authr
+                        s.setState(authenticating)
+                    }
+                    return
+                }
+            }
+            failure := xml.NewElementNamespace("failure", saslNamespace)
+            failure.AppendElement(xml.NewElementName("invalid-mechanism"))
+            s.writeElement(failure)
+            
+        case nonSaslNamespace:
+            authr:=s.non_sasl_authenticator
+            if err := s.continueAuthentication(elem, authr); err != nil {
+                return
+            }
+            if authr.Authenticated() {
+                s.finishAuthentication(authr.Username())
+            } else {
+                s.activeAuth = authr
+                s.setState(authenticating)
+            }
+            return
+        
+        default:
+            s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
+        
+    }
+    
+    return
+    
+    
+    
+    
+    
+    
 	if elem.Namespace() != saslNamespace {
 		s.disconnectWithStreamError(streamerror.ErrInvalidNamespace)
 		return
 	}
 	mechanism := elem.Attributes().Get("mechanism")
-	for _, authr := range s.authenticators {
+	for _, authr := range s.sasl_authenticators {
 		if authr.Mechanism() == mechanism {
 			if err := s.continueAuthentication(elem, authr); err != nil {
 				return
@@ -575,6 +636,17 @@ func (s *inStream) continueAuthentication(elem xml.XElement, authr auth.Authenti
 	}
 	return err
 }
+
+//func (s *inStream) continueNonSaslAuthentication(elem xml.XElement, authr auth.Authenticator) error {
+//	err := authr.ProcessElement(elem)
+//	if saslErr, ok := err.(*auth.SASLError); ok {
+//		s.failAuthentication(saslErr.Element())
+//	} else if err != nil {
+//		log.Error(err)
+//		s.failAuthentication(auth.ErrSASLTemporaryAuthFailure.(*auth.SASLError).Element())
+//	}
+//	return err
+//}
 
 func (s *inStream) finishAuthentication(username string) {
 	if s.activeAuth != nil {
