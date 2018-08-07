@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ortuman/jackal/model"
+	"time"
 )
 
 // InsertOrUpdateUser inserts a new user entity into storage,
@@ -156,4 +157,55 @@ func (s *Storage) ChatExists(chat_id string) (bool, error) {
 	default:
 		return false, err
 	}
+}
+
+func (s *Storage) AddMessage(chat_id int,username, message string) {
+	db, err := sql.Open("mysql", "jackal:password@/jackal")  // Change Password!!!!!
+
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+		created_at := time.Now()
+		updated_at := time.Now()
+
+		result, err := db.Exec("insert into jackal.chats_msgs (chat_id, username, msg, created_at, updated_at) values (?, ?)",
+			 chat_id, username, message, created_at, updated_at)
+		if err != nil{
+			panic(err)
+		}
+		print(result)
+}
+
+func (s *Storage) EditMessage(chat_id int,username, old_msg, new_msg string) {
+	db, err := sql.Open("mysql", "jackal:password@/jackal")  // Change Password!!!!!
+
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+		updated_at := time.Now()
+
+		result, err := db.Exec("update chats_msg message = ?, updated_at = ? where chat_id = ? and username = ? and msg = ?",
+			new_msg, updated_at, chat_id, username, old_msg)
+		if err != nil{
+			panic(err)
+		}
+		print(result)
+}
+
+func (s *Storage) DelMessage(chat_id int,username, msg string) {
+	db, err := sql.Open("mysql", "jackal:password@/jackal")  // Change Password!!!!!
+
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+
+		result, err := db.Exec("delete from chats_msg where chat_id=? and username=? and msg=?",
+			chat_id, username, msg)
+		if err != nil{
+			panic(err)
+		}
+		print(result)
 }
