@@ -46,7 +46,7 @@ func (cfg *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	for _, mod := range p.Enabled {
 		switch mod {
 		case "roster", "last_activity", "private", "vcard", "registration", "version", "blocking_command",
-			"ping", "offline":
+			"ping", "offline", "chats":
 			break
 		default:
 			return fmt.Errorf("module.Config: unrecognized module: %s", mod)

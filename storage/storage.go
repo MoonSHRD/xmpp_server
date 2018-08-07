@@ -32,14 +32,15 @@ type userStorage interface {
 }
 
 type chatStorage interface {
-	InsertOrUpdateChat(user *model.User) error
-	InsertOrUpdateChatMessage(user *model.User) error
-	DeleteChat(user *model.User) error
-	GetChatUpdates(user *model.User) error
-    InsertChatUser(user *model.User) error
-	DeleteChatUser(username string) error
-	FetchUser(username string) (*model.User, error)
-	UserExists(username string) (bool, error)
+	InsertOrUpdateChat(c *model.Chat) (int64,error)
+    InsertChatUser(chat_id int64,username string,admin bool) error
+    DeleteChatUser(chat_id int64,username string) error
+    FetchChat(chat_id int64) (*model.Chat, error)
+    FetchChatUsers(chat_id int64) ([]string, error)
+    DeleteChat(chat_id int64) error
+    ChatExists(chat_id int64) (bool, error)
+	//InsertOrUpdateChatMessage(user *model.User) error
+	//GetChatMsgs(user *model.User) error
 }
 
 type rosterStorage interface {
@@ -125,6 +126,7 @@ type blockListStorage interface {
 // Storage represents an entity storage interface.
 type Storage interface {
 	userStorage
+    chatStorage
 	offlineStorage
 	rosterStorage
 	vCardStorage

@@ -33,6 +33,7 @@ import (
 	"github.com/ortuman/jackal/xml/jid"
 	"github.com/pborman/uuid"
     "github.com/ortuman/jackal/module/xep0077"
+    "github.com/ortuman/jackal/module/xep0045"
 )
 
 const (
@@ -62,6 +63,7 @@ type modules struct {
 	offline      *offline.Offline
 	lastActivity *xep0012.LastActivity
 	discoInfo    *xep0030.DiscoInfo
+    chats        *xep0045.RegisterChat
 	private      *xep0049.Private
 	vCard        *xep0054.VCard
 	register     *xep0077.Register
@@ -249,6 +251,13 @@ func (s *inStream) initializeModules() {
 		mods.all = append(mods.all, mods.lastActivity)
 	}
 
+	// XEP-0045: Multi user chat (https://xmpp.org/extensions/xep-0045.html)
+	if _, ok := s.cfg.modules.Enabled["chats"]; ok {
+		mods.chats = xep0045.New(s)
+		//mods.iqHandlers = append(mods.iqHandlers, mods.chats)
+		mods.all = append(mods.all, mods.chats)
+	}
+
 	// XEP-0049: Private XML Storage (https://xmpp.org/extensions/xep-0049.html)
 	if _, ok := s.cfg.modules.Enabled["private"]; ok {
 		mods.private = xep0049.New(s)
@@ -361,19 +370,19 @@ func (s *inStream) unauthenticatedFeatures() []xml.XElement {
 		features = append(features, startTLS)
 	}
 
-	// attach SASL mechanisms
-	shouldOfferSASL := (!isSocketTr || (isSocketTr && s.IsSecured()))
-
-	if shouldOfferSASL && len(s.sasl_authenticators) > 0 {
-		mechanisms := xml.NewElementName("mechanisms")
-		mechanisms.SetNamespace(saslNamespace)
-		for _, athr := range s.sasl_authenticators {
-			mechanism := xml.NewElementName("mechanism")
-			mechanism.SetText(athr.Mechanism())
-			mechanisms.AppendElement(mechanism)
-		}
-		features = append(features, mechanisms)
-	}
+	//// attach SASL mechanisms
+	//shouldOfferSASL := (!isSocketTr || (isSocketTr && s.IsSecured()))
+    //
+	//if shouldOfferSASL && len(s.sasl_authenticators) > 0 {
+	//	mechanisms := xml.NewElementName("mechanisms")
+	//	mechanisms.SetNamespace(saslNamespace)
+	//	for _, athr := range s.sasl_authenticators {
+	//		mechanism := xml.NewElementName("mechanism")
+	//		mechanism.SetText(athr.Mechanism())
+	//		mechanisms.AppendElement(mechanism)
+	//	}
+	//	features = append(features, mechanisms)
+	//}
 
 	// allow In-band registration over encrypted stream only
 	allowRegistration := s.IsSecured()
@@ -780,6 +789,7 @@ func (s *inStream) processComponentStanza(stanza xml.Stanza) {
 
 func (s *inStream) processIQ(iq *xml.IQ) {
 	toJID := iq.ToJID()
+	//fromJID := iq.FromJID()
 
 	replyOnBehalf := toJID.IsBare() && host.IsLocalHost(toJID.Domain())
 	if !replyOnBehalf {
@@ -821,6 +831,11 @@ func (s *inStream) processPresence(presence *xml.Presence) {
 	if replyOnBehalf && (presence.IsAvailable() || presence.IsUnavailable()) {
 		s.ctx.SetObject(presence, presenceCtxKey)
 	}
+	
+	if s.mods.chats.ProcessElem(presence) {
+	    return
+    }
+	
 	// deliver subscription presence to roster module
 	if rst := s.mods.roster; rst != nil {
 		rst.ProcessPresence(presence)
@@ -837,6 +852,10 @@ func (s *inStream) processPresence(presence *xml.Presence) {
 
 func (s *inStream) processMessage(message *xml.Message) {
 	toJID := message.ToJID()
+    
+    if s.mods.chats.ProcessElem(message) {
+        return
+    }
 
 sendMessage:
 	err := router.Route(message)

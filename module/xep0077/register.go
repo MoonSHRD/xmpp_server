@@ -46,7 +46,7 @@ func (x *Register) RegisterDisco(discoInfo *xep0030.DiscoInfo) {
 	discoInfo.Entity(x.stm.Domain(), "").AddFeature(registerNamespace)
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the in-band registration module.
 func (x *Register) MatchesIQ(iq *xml.IQ) bool {
 	return iq.Elements().ChildNamespace("query", registerNamespace) != nil

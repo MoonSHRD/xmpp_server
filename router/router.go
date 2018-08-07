@@ -255,7 +255,8 @@ func (r *router) route(stanza xml.Stanza, ignoreBlocking bool) error {
 		if exists {
 			return ErrNotAuthenticated
 		}
-		return ErrNotExistingAccount
+		
+        return ErrNotExistingAccount
 	}
 	if toJID.IsFullWithUser() {
 		for _, stm := range rcps {

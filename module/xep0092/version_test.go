@@ -26,7 +26,7 @@ func TestXEP0092(t *testing.T) {
 	cfg := Config{}
 	x := New(&cfg, stm)
 
-	// test MatchesIQ
+	// test MatchesPresence
 	iq := xml.NewIQType(uuid.New(), xml.GetType)
 	iq.SetFromJID(j)
 	iq.SetToJID(j)

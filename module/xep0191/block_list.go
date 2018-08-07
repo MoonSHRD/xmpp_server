@@ -42,7 +42,7 @@ func (x *BlockingCommand) RegisterDisco(discoInfo *xep0030.DiscoInfo) {
 	discoInfo.Entity(x.stm.JID().ToBareJID().String(), "").AddFeature(blockingCommandNamespace)
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the blocking command module.
 func (x *BlockingCommand) MatchesIQ(iq *xml.IQ) bool {
 	e := iq.Elements()

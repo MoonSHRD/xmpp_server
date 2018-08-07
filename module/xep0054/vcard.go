@@ -40,7 +40,7 @@ func (x *VCard) RegisterDisco(discoInfo *xep0030.DiscoInfo) {
 	discoInfo.Entity(x.stm.JID().ToBareJID().String(), "").AddFeature(vCardNamespace)
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the vCard module.
 func (x *VCard) MatchesIQ(iq *xml.IQ) bool {
 	return (iq.IsGet() || iq.IsSet()) && iq.Elements().ChildNamespace("vCard", vCardNamespace) != nil

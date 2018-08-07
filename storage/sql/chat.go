@@ -13,7 +13,7 @@ import (
 
 // InsertOrUpdateUser inserts a new user entity into storage,
 // or updates it in case it's been previously inserted.
-func (s *Storage) InsertOrUpdateChat(c model.Chat) error {
+func (s *Storage) InsertOrUpdateChat(c *model.Chat) (int64,error) {
     
     var channel int
     var suffix string
@@ -28,7 +28,7 @@ func (s *Storage) InsertOrUpdateChat(c model.Chat) error {
     columns := []string{"chatname", "creator", "channel", "created_at", "updated_at"}
     values := []interface{}{c.Chatname, c.Creator, channel, nowExpr, nowExpr}
     
-    if c.Id!=""{
+    if c.Id!=0{
         columns=append([]string{"id"},columns...)
         values=append([]interface{}{c.Id},values...)
     
@@ -36,15 +36,16 @@ func (s *Storage) InsertOrUpdateChat(c model.Chat) error {
         suffixArgs = []interface{}{c.Chatname}
     }
     
-    q := sq.Insert("users").
+    q := sq.Insert("chats").
         Columns(columns...).
         Values(values...).
         Suffix(suffix, suffixArgs...)
-    _, err := q.RunWith(s.db).Exec()
-    return err
+    res, err := q.RunWith(s.db).Exec()
+    id,err:=res.LastInsertId()
+    return id,err
 }
 
-func (s *Storage) InsertChatUser(chat_id int,username string,admin bool) error {
+func (s *Storage) InsertChatUser(chat_id int64,username string,admin bool) error {
     
     //var columns []string
     //var values []interface{}
@@ -59,20 +60,20 @@ func (s *Storage) InsertChatUser(chat_id int,username string,admin bool) error {
     columns := []string{"chat_id", "username", "admin", "created_at"}
     values := []interface{}{chat_id, username, i_admin, nowExpr}
     
-    var suffix string
-    var suffixArgs []interface{}
+    //var suffix string
+    //var suffixArgs []interface{}
     
-    suffix = "ON DUPLICATE KEY IGNORE"
+    //suffix = "ON DUPLICATE KEY IGNORE"
     
-    q := sq.Insert("users").
+    q := sq.Insert("chats_users").
         Columns(columns...).
-        Values(values...).
-        Suffix(suffix, suffixArgs...)
+        Values(values...)
     _, err := q.RunWith(s.db).Exec()
+    //fmt.Println(id)
     return err
 }
 
-func (s *Storage) DeleteChatUser(chat_id int,username string) error {
+func (s *Storage) DeleteChatUser(chat_id int64,username string) error {
     return s.inTransaction(func(tx *sql.Tx) error {
         var err error
         _, err = sq.Delete("chats_users").Where(sq.Eq{"chat_id": chat_id,"username":username}).RunWith(tx).Exec()
@@ -88,7 +89,7 @@ func (s *Storage) DeleteChatUser(chat_id int,username string) error {
 }
 
 // FetchUser retrieves from storage a user entity.
-func (s *Storage) FetchChat(chat_id int) (*model.Chat, error) {
+func (s *Storage) FetchChat(chat_id int64) (*model.Chat, error) {
 	q := sq.Select("id", "chatname", "creator", "channel").
 		From("chats").
 		Where(sq.Eq{"id": chat_id})
@@ -107,17 +108,22 @@ func (s *Storage) FetchChat(chat_id int) (*model.Chat, error) {
 }
 
 // FetchUser retrieves from storage a user entity.
-func (s *Storage) FetchChatUsers(chat_id int) (*model.Chat, error) {
+func (s *Storage) FetchChatUsers(chat_id int64) ([]string, error) {
 	q := sq.Select("username", "admin").
-		From("chats").
+		From("chats_users").
 		Where(sq.Eq{"chat_id": chat_id})
-	
-	var c model.Chat
 
-	err := q.RunWith(s.db).QueryRow().Scan(&c.Id, &c.Chatname, &c.Creator, &c.Channel)
+	rows,err := q.RunWith(s.db).Query()
 	switch err {
 	case nil:
-		return &c, nil
+	    var users []string
+	    var username string
+	    var admin int
+	    for rows.Next() {
+            rows.Scan(&username,&admin)
+            users=append(users, username)
+        }
+		return users, nil
 	case sql.ErrNoRows:
 		return nil, nil
 	default:
@@ -126,7 +132,7 @@ func (s *Storage) FetchChatUsers(chat_id int) (*model.Chat, error) {
 }
 
 // DeleteUser deletes a user entity from storage.
-func (s *Storage) DeleteChat(chat_id int) error {
+func (s *Storage) DeleteChat(chat_id int64) error {
 	return s.inTransaction(func(tx *sql.Tx) error {
 		var err error
 		_, err = sq.Delete("chats_msg").Where(sq.Eq{"chat_id": chat_id}).RunWith(tx).Exec()
@@ -137,7 +143,7 @@ func (s *Storage) DeleteChat(chat_id int) error {
 		if err != nil {
 			return err
 		}
-		_, err = sq.Delete("chats").Where(sq.Eq{"chat_id": chat_id}).RunWith(tx).Exec()
+		_, err = sq.Delete("chats").Where(sq.Eq{"id": chat_id}).RunWith(tx).Exec()
 		if err != nil {
 			return err
 		}
@@ -146,8 +152,8 @@ func (s *Storage) DeleteChat(chat_id int) error {
 }
 
 // UserExists returns whether or not a user exists within storage.
-func (s *Storage) ChatExists(chat_id string) (bool, error) {
-	q := sq.Select("COUNT(*)").From("chats").Where(sq.Eq{"chat_id": chat_id})
+func (s *Storage) ChatExists(chat_id int64) (bool, error) {
+	q := sq.Select("COUNT(*)").From("chats").Where(sq.Eq{"id": chat_id})
 	var count int
 	err := q.RunWith(s.db).QueryRow().Scan(&count)
 	switch err {

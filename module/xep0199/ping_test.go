@@ -21,7 +21,7 @@ func TestXEP0199_Matching(t *testing.T) {
 
 	x := New(&Config{}, nil)
 
-	// test MatchesIQ
+	// test MatchesPresence
 	iqID := uuid.New()
 	iq := xml.NewIQType(iqID, xml.GetType)
 	iq.SetFromJID(j)
