@@ -177,6 +177,17 @@ func (j *JID) String() string {
 	return buf.String()
 }
 
+func (j *JID) NDString() string {
+	buf := bufPool.Get()
+	defer bufPool.Put(buf)
+	if len(j.node) > 0 {
+		buf.WriteString(j.node)
+		buf.WriteString("@")
+	}
+	buf.WriteString(j.domain)
+	return buf.String()
+}
+
 func stringPrep(node, domain, resource string) (*JID, error) {
 	// Ensure that parts are valid UTF-8 (and short circuit the rest of the
 	// process if they're not). We'll check the domain after performing
