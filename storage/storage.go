@@ -36,7 +36,7 @@ type chatStorage interface {
     InsertChatUser(chat_id int64,username string,admin bool) error
     DeleteChatUser(chat_id int64,username string) error
     FetchChat(chat_id int64) (*model.Chat, error)
-    FetchChatUsers(chat_id int64) ([]string, error)
+    FetchChatUsers(chat_id int64) (model.ChatUsers, error)
     DeleteChat(chat_id int64) error
     ChatExists(chat_id int64) (bool, error)
 	//InsertOrUpdateChatMessage(user *model.User) error

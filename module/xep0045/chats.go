@@ -7,8 +7,9 @@ import (
     "github.com/ortuman/jackal/storage"
     "github.com/ortuman/jackal/model"
     "strconv"
-    "time"
     "github.com/ortuman/jackal/xml/jid"
+    "github.com/ortuman/jackal/router"
+    "time"
 )
 
 const chatNamespace = "http://jabber.org/protocol/muc"
@@ -55,10 +56,14 @@ func New(stm stream.C2S) *RegisterChat {
 func (x *RegisterChat) CreateChat(presence *xml.Presence) {
     var err error
     to:=presence.ToJID()
-    from:=presence.FromJID().NDString()
-    chat:=model.Chat{Chatname:to.Node(),Channel:false,Creator:from}
+    from:=presence.FromJID()
+    channel := false
+    if presence.Attributes().Get("channel")=="1" {
+        channel = true
+    }
+    chat:=model.Chat{Chatname:to.Node(),Channel:channel,Creator:from.Node()}
     chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
-    storage.Instance().InsertChatUser(chat.Id,from,true)
+    storage.Instance().InsertChatUser(chat.Id,from.Node(),true)
     if err != nil {
         x.stm.SendElement(presence.NotAllowedError())
     } else {
@@ -68,7 +73,8 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
         
         elem:=xml.NewElementName("presence")
         elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+to.Node())
-        elem.SetTo(from)
+        elem.SetTo(from.NDString())
+        elem.SetAttribute("channel",chat.IsChannel())
         elem.AppendElement(x_elem)
         
         x.stm.SendElement(elem)
@@ -88,12 +94,15 @@ func (x *RegisterChat) sendJoinEvent(chat_id int64,user *jid.JID) {
     elem.SetAttribute("user_joined",user.NDString())
     elem.AppendElement(x_elem)
     
-    
     chat_u,_ := storage.Instance().FetchChatUsers(chat_id)
-    for _,username := range chat_u {
-        elem.SetTo(username)
-        x.stm.SendElement(elem)
-    }
+    
+    x.sendToUsers(elem,chat_u)
+    //for username,_ := range chat_u {
+    //    elem.SetTo(username)
+    //    for _,u_stream := range router.UserStreams(username) {
+    //        u_stream.SendElement(elem)
+    //    }
+    //}
 }
 
 func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role user_role) {
@@ -103,6 +112,7 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
     x_elem.AppendElement(generateRoleItem(role))
     
     elem:=xml.NewElementName("presence")
+    elem.SetAttribute("channel",chat.IsChannel())
     elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+chat.Chatname)
     elem.SetTo(user.NDString())
     elem.AppendElement(x_elem)
@@ -126,8 +136,17 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
         return
     }
     
-    storage.Instance().InsertChatUser(id,from.NDString(),false)
+    storage.Instance().InsertChatUser(id,from.Node(),false)
     x.sendJoinEvent(id,from)
+}
+
+func (x *RegisterChat) sendToUsers(elem *xml.Element, users model.ChatUsers) {
+    for username,_ := range users {
+        elem.SetTo(username)
+        for _,u_stream := range router.UserStreams(username) {
+            u_stream.SendElement(elem)
+        }
+    }
 }
 
 func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
@@ -156,18 +175,30 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
         return
     }
     
+    chat,_ := storage.Instance().FetchChat(id)
     chat_u,_ := storage.Instance().FetchChatUsers(id)
-    //chat,_ := storage.Instance().FetchChat(id)
     
-    msg.SetAttribute("sender",msg.From())
-    msg.SetFrom(msg.To())
-    for _,username := range chat_u {
-        msg.SetTo(username)
-        x_elem:=xml.NewElementName("x")
-        x_elem.SetAttribute("stamp",time.Now().String())
-        msg.AppendElement(x_elem)
-        x.stm.SendElement(msg)
+    if chat.Channel && chat_u[msg.FromJID().Node()].Admin!=1 {
+        x.stm.SendElement(msg.BadRequestError())
+        return
     }
+    
+    if chat.Channel {
+        msg.SetAttribute("sender",msg.From())
+    }
+    
+    elem:=xml.NewElementFromElement(msg)
+    elem.SetFrom(msg.To())
+    x_elem:=xml.NewElementName("x")
+    x_elem.SetAttribute("stamp",time.Now().String())
+    msg.AppendElement(x_elem)
+    
+    x.sendToUsers(elem,chat_u)
+    
+    //for username,_ := range chat_u {
+    //    msg.SetTo(username)
+    //    x.stm.SendElement(msg)
+    //}
 }
 
 func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {

@@ -108,7 +108,7 @@ func (s *Storage) FetchChat(chat_id int64) (*model.Chat, error) {
 }
 
 // FetchUser retrieves from storage a user entity.
-func (s *Storage) FetchChatUsers(chat_id int64) ([]string, error) {
+func (s *Storage) FetchChatUsers(chat_id int64) (model.ChatUsers, error) {
 	q := sq.Select("username", "admin").
 		From("chats_users").
 		Where(sq.Eq{"chat_id": chat_id})
@@ -116,12 +116,13 @@ func (s *Storage) FetchChatUsers(chat_id int64) ([]string, error) {
 	rows,err := q.RunWith(s.db).Query()
 	switch err {
 	case nil:
-	    var users []string
+	    
+	    users := model.ChatUsers{}
 	    var username string
 	    var admin int
 	    for rows.Next() {
             rows.Scan(&username,&admin)
-            users=append(users, username)
+            users[username]=model.ChatUser{username,admin}
         }
 		return users, nil
 	case sql.ErrNoRows:
