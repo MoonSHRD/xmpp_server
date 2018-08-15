@@ -21,3 +21,10 @@ func (chat Chat) IsChannel() string {
     }
     return channel
 }
+
+type Chats map[string]ChatsName
+
+type ChatsName struct {
+    Id string
+    Chatname string
+}
