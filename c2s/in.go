@@ -788,7 +788,9 @@ func (s *inStream) processComponentStanza(stanza xml.Stanza) {
 }
 
 func (s *inStream) processIQ(iq *xml.IQ) {
-	s.mods.chats.ProcessElem(iq)
+	if s.mods.chats.ProcessElem(iq) {
+		return
+	}
 	toJID := iq.ToJID()
 	//fromJID := iq.FromJID()
 

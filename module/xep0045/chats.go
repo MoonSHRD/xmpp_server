@@ -229,10 +229,10 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
         x.ProcessMessage(stanza)
 
     case *xml.IQ:
-        //el := stanza.Elements().ChildNamespace("x", discoNamespace)
-        //if el == nil{
-        //    return false
-        //}
+        el := stanza.Elements().ChildNamespace("query", discoNamespace)
+        if el == nil{
+           return false
+        }
         x.FindGroup(stanza)
     }
 
@@ -244,21 +244,15 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
     q_elem.SetNamespace(discoNamespace)
     a := presence.Attributes().Get("name")
     res := storage.Instance().FindGroups(a)
-    //print(res)
-    for _, chat := range(res){
+    for _, group := range(res){
        item := xml.NewElementName("item")
-       item.SetAttribute("JID", chat.Id)
-       item.SetAttribute("name", chat.Chatname)
+       item.SetAttribute("jid", strconv.Itoa(int(group.Id)) + "@localhost")
+       item.SetAttribute("name", group.Chatname)
        q_elem.AppendElement(item)
     }
-    //part_name_group := presence.Attributes().Get("name")
-    // function, that return list of groups
-    //<item jid = ""
-    //      name = ""/>
-
     elem := xml.NewElementName("iq")
     elem.SetFrom("localhost")
-    elem.SetTo(presence.FromJID().NDString() + "@localhost/pda")
+    elem.SetTo(presence.FromJID().NDString())
     elem.SetType("result")
     elem.AppendElement(q_elem)
     x.stm.SendElement(elem)

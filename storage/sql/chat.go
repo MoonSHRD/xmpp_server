@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ortuman/jackal/model"
-	"strconv"
 )
 
 // InsertOrUpdateUser inserts a new user entity into storage,
@@ -165,16 +164,19 @@ func (s *Storage) ChatExists(chat_id int64) (bool, error) {
 	}
 }
 
-func (s *Storage) FindGroups(chat_name string) model.Chats{
-	q := sq.Select("id", "chatname").From("chats").Where(sq.Eq{"chatname": chat_name})
+func (s *Storage) FindGroups(chat_name string) []model.Chat{
+	q := sq.Select("id", "chatname", "creator", "channel").From("chats").Where("chatname LIKE ?", ("%" + chat_name + "%"))
 	records, _ := q.RunWith(s.db).Query()
-	var id int
+	var id int64
 	var full_chat_name string
-	var list_chats = model.Chats{}
+	var creator string
+	var channel bool
+	var list_chats []model.Chat
 	for records.Next(){
-		records.Scan(&id, &full_chat_name)
-		print(full_chat_name)
-		list_chats[strconv.Itoa(id)] = model.ChatsName{strconv.Itoa(id) + "/localhost", full_chat_name}
+		records.Scan(&id, &full_chat_name, &creator, &channel)
+		record := model.Chat{id, full_chat_name, creator, channel}
+		list_chats = append(list_chats, record)
+
 	}
 	return list_chats
 }
