@@ -13,6 +13,7 @@ import (
 )
 
 const chatNamespace = "http://jabber.org/protocol/muc"
+const discoNamespace = "http://jabber.org/protocol/disco#items"
 
 type RegisterChat struct {
     stm        stream.C2S
@@ -226,7 +227,33 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
             return false
         }
         x.ProcessMessage(stanza)
+
+    case *xml.IQ:
+        el := stanza.Elements().ChildNamespace("query", discoNamespace)
+        if el == nil{
+           return false
+        }
+        x.FindGroup(stanza)
     }
-    
+
     return true
+}
+
+func (x *RegisterChat) FindGroup(presence *xml.IQ){
+    q_elem := xml.NewElementName("query")
+    q_elem.SetNamespace(discoNamespace)
+    a := presence.Attributes().Get("name")
+    res := storage.Instance().FindGroups(a)
+    for _, group := range(res){
+       item := xml.NewElementName("item")
+       item.SetAttribute("jid", strconv.Itoa(int(group.Id)) + "@localhost")
+       item.SetAttribute("name", group.Chatname)
+       q_elem.AppendElement(item)
+    }
+    elem := xml.NewElementName("iq")
+    elem.SetFrom("localhost")
+    elem.SetTo(presence.FromJID().NDString())
+    elem.SetType("result")
+    elem.AppendElement(q_elem)
+    x.stm.SendElement(elem)
 }
