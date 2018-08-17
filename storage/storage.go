@@ -39,6 +39,7 @@ type chatStorage interface {
     FetchChatUsers(chat_id int64) (model.ChatUsers, error)
     DeleteChat(chat_id int64) error
     ChatExists(chat_id int64) (bool, error)
+	FindGroups(chat_name string) []model.Chat
 	//InsertOrUpdateChatMessage(user *model.User) error
 	//GetChatMsgs(user *model.User) error
 }

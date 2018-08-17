@@ -116,7 +116,6 @@ func (s *Storage) FetchChatUsers(chat_id int64) (model.ChatUsers, error) {
 	rows,err := q.RunWith(s.db).Query()
 	switch err {
 	case nil:
-	    
 	    users := model.ChatUsers{}
 	    var username string
 	    var admin int
@@ -163,4 +162,21 @@ func (s *Storage) ChatExists(chat_id int64) (bool, error) {
 	default:
 		return false, err
 	}
+}
+
+func (s *Storage) FindGroups(chat_name string) []model.Chat{
+	q := sq.Select("id", "chatname", "creator", "channel").From("chats").Where("chatname LIKE ?", ("%" + chat_name + "%"))
+	records, _ := q.RunWith(s.db).Query()
+	var id int64
+	var full_chat_name string
+	var creator string
+	var channel bool
+	var list_chats []model.Chat
+	for records.Next(){
+		records.Scan(&id, &full_chat_name, &creator, &channel)
+		record := model.Chat{id, full_chat_name, creator, channel}
+		list_chats = append(list_chats, record)
+
+	}
+	return list_chats
 }
