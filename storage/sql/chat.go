@@ -25,15 +25,15 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (int64,error) {
         channel=0
     }
     
-    columns := []string{"chatname", "creator", "channel", "created_at", "updated_at"}
-    values := []interface{}{c.Chatname, c.Creator, channel, nowExpr, nowExpr}
+    columns := []string{"chatname", "creator", "channel", "created_at", "updated_at", "avatar"}
+    values := []interface{}{c.Chatname, c.Creator, channel, nowExpr, nowExpr, c.Avatar}
     
     if c.Id!=0{
         columns=append([]string{"id"},columns...)
         values=append([]interface{}{c.Id},values...)
     
-        suffix = "ON DUPLICATE KEY UPDATE chatname = ?, updated_at = NOW()"
-        suffixArgs = []interface{}{c.Chatname}
+        suffix = "ON DUPLICATE KEY UPDATE chatname = ?, updated_at = NOW(), avatar = ?"
+        suffixArgs = []interface{}{c.Chatname,c.Avatar}
     }
     
     q := sq.Insert("chats").
@@ -90,13 +90,13 @@ func (s *Storage) DeleteChatUser(chat_id int64,username string) error {
 
 // FetchUser retrieves from storage a user entity.
 func (s *Storage) FetchChat(chat_id int64) (*model.Chat, error) {
-	q := sq.Select("id", "chatname", "creator", "channel").
+	q := sq.Select("id", "chatname", "creator", "channel", "avatar").
 		From("chats").
 		Where(sq.Eq{"id": chat_id})
 	
 	var c model.Chat
 
-	err := q.RunWith(s.db).QueryRow().Scan(&c.Id, &c.Chatname, &c.Creator, &c.Channel)
+	err := q.RunWith(s.db).QueryRow().Scan(&c.Id, &c.Chatname, &c.Creator, &c.Channel, &c.Avatar)
 	switch err {
 	case nil:
 		return &c, nil
@@ -165,18 +165,13 @@ func (s *Storage) ChatExists(chat_id int64) (bool, error) {
 }
 
 func (s *Storage) FindGroups(chat_name string) []model.Chat{
-	q := sq.Select("id", "chatname", "creator", "channel").From("chats").Where("chatname LIKE ?", ("%" + chat_name + "%"))
+	q := sq.Select("id", "chatname", "creator", "channel", "avatar").From("chats").Where("chatname LIKE ?", ("%" + chat_name + "%"))
 	records, _ := q.RunWith(s.db).Query()
-	var id int64
-	var full_chat_name string
-	var creator string
-	var channel bool
 	var list_chats []model.Chat
 	for records.Next(){
-		records.Scan(&id, &full_chat_name, &creator, &channel)
-		record := model.Chat{id, full_chat_name, creator, channel}
-		list_chats = append(list_chats, record)
-
+	    chat:=model.Chat{}
+		records.Scan(&chat.Id, &chat.Chatname, &chat.Creator, &chat.Channel, &chat.Avatar)
+		list_chats = append(list_chats, chat)
 	}
 	return list_chats
 }

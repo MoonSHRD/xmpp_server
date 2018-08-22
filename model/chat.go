@@ -5,6 +5,7 @@ type Chat struct {
     Chatname string
     Creator string
     Channel bool
+    Avatar string
 }
 
 type ChatUser struct {

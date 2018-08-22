@@ -10,6 +10,7 @@ import (
     "github.com/ortuman/jackal/xml/jid"
     "github.com/ortuman/jackal/router"
     "time"
+    "github.com/ortuman/jackal/helpers"
 )
 
 const chatNamespace = "http://jabber.org/protocol/muc"
@@ -63,22 +64,26 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
         channel = true
     }
     chat:=model.Chat{Chatname:to.Node(),Channel:channel,Creator:from.Node()}
+    //todo: deal with double chat insert
+    chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
+    chat.Avatar=helpers.GenerateThumb(chat.Id)
     chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
     storage.Instance().InsertChatUser(chat.Id,from.Node(),true)
     if err != nil {
         x.stm.SendElement(presence.NotAllowedError())
     } else {
-        x_elem:=xml.NewElementName("x")
-        x_elem.SetNamespace(chatNamespace+"#user")
-        x_elem.AppendElement(generateRoleItem(roles.owner))
-        
-        elem:=xml.NewElementName("presence")
-        elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+to.Node())
-        elem.SetTo(from.NDString())
-        elem.SetAttribute("channel",chat.IsChannel())
-        elem.AppendElement(x_elem)
-        
-        x.stm.SendElement(elem)
+        x.sendJoinAcceptance(from,&chat,roles.owner)
+        //x_elem:=xml.NewElementName("x")
+        //x_elem.SetNamespace(chatNamespace+"#user")
+        //x_elem.AppendElement(generateRoleItem(roles.owner))
+        //
+        //elem:=xml.NewElementName("presence")
+        //elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+to.Node())
+        //elem.SetTo(from.NDString())
+        //elem.SetAttribute("channel",chat.IsChannel())
+        //elem.AppendElement(x_elem)
+        //
+        //x.stm.SendElement(elem)
     }
 }
 
@@ -114,6 +119,7 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
     
     elem:=xml.NewElementName("presence")
     elem.SetAttribute("channel",chat.IsChannel())
+    elem.SetAttribute("avatar",chat.Avatar)
     elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+chat.Chatname)
     elem.SetTo(user.NDString())
     elem.AppendElement(x_elem)
@@ -248,6 +254,8 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
        item := xml.NewElementName("item")
        item.SetAttribute("jid", strconv.Itoa(int(group.Id)) + "@localhost")
        item.SetAttribute("name", group.Chatname)
+       item.SetAttribute("avatar", group.Avatar)
+       item.SetAttribute("channel", group.IsChannel())
        q_elem.AppendElement(item)
     }
     elem := xml.NewElementName("iq")

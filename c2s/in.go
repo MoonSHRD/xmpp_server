@@ -455,13 +455,13 @@ func (s *inStream) handleConnected(elem xml.XElement) {
 
 func (s *inStream) handleAuthenticating(elem xml.XElement) {
     switch elem.Namespace() {
-        case saslNamespace:
-            authr := s.activeAuth
-            s.continueAuthentication(elem, authr)
-            if authr.Authenticated() {
-                s.finishAuthentication(authr.Username())
-            }
-            break
+        //case saslNamespace:
+        //    authr := s.activeAuth
+        //    s.continueAuthentication(elem, authr)
+        //    if authr.Authenticated() {
+        //        s.finishAuthentication(authr.Username())
+        //    }
+        //    break
         case nonSaslNamespace:
             authr := s.activeAuth
             s.continueAuthentication(elem, authr)
