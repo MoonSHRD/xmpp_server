@@ -124,6 +124,10 @@ type blockListStorage interface {
 	FetchBlockListItems(username string) ([]model.BlockListItem, error)
 }
 
+
+type messageStorage interface {
+	write_msg_to_db(recipient, sender, msg string) error
+}
 // Storage represents an entity storage interface.
 type Storage interface {
 	userStorage
@@ -133,6 +137,7 @@ type Storage interface {
 	vCardStorage
 	privateStorage
 	blockListStorage
+	messageStorage
 
 	// Shutdown shuts down storage sub system.
 	Shutdown()
