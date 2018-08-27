@@ -57,7 +57,7 @@ func (x *Ping) RegisterDisco(discoInfo *xep0030.DiscoInfo) {
 	discoInfo.Entity(x.stm.JID().ToBareJID().String(), "").AddFeature(pingNamespace)
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the ping module.
 func (x *Ping) MatchesIQ(iq *xml.IQ) bool {
 	return x.isPongIQ(iq) || iq.Elements().ChildNamespace("ping", pingNamespace) != nil

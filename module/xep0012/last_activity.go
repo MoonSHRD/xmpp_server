@@ -39,7 +39,7 @@ func (x *LastActivity) RegisterDisco(discoInfo *xep0030.DiscoInfo) {
 	discoInfo.Entity(x.stm.JID().ToBareJID().String(), "").AddFeature(lastActivityNamespace)
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the last activity module.
 func (x *LastActivity) MatchesIQ(iq *xml.IQ) bool {
 	return iq.IsGet() && iq.Elements().ChildNamespace("query", lastActivityNamespace) != nil

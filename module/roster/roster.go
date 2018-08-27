@@ -52,7 +52,7 @@ func New(cfg *Config, stm stream.C2S) *Roster {
 func (r *Roster) RegisterDisco(_ *xep0030.DiscoInfo) {
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the roster module.
 func (r *Roster) MatchesIQ(iq *xml.IQ) bool {
 	return iq.Elements().ChildNamespace("query", rosterNamespace) != nil

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE (username)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE TABLE roster_notifications (
+CREATE TABLE IF NOT EXISTS roster_notifications (
     contact VARCHAR(256) NOT NULL,
     jid VARCHAR(512) NOT NULL,
     elements TEXT NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE roster_notifications (
 
 CREATE INDEX i_roster_notifications_jid ON roster_notifications(jid);
 
-CREATE TABLE roster_items (
+CREATE TABLE IF NOT EXISTS roster_items (
     username VARCHAR(256) NOT NULL,
     jid VARCHAR(512) NOT NULL,
     name TEXT NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE roster_items (
 CREATE INDEX i_roster_items_username ON roster_items(username);
 CREATE INDEX i_roster_items_jid ON roster_items(jid);
 
-CREATE TABLE roster_versions (
+CREATE TABLE IF NOT EXISTS roster_versions (
     username VARCHAR(256) NOT NULL,
     ver INT NOT NULL DEFAULT 0,
     last_deletion_ver INT NOT NULL DEFAULT 0,
@@ -85,9 +85,36 @@ CREATE TABLE IF NOT EXISTS offline_messages (
 
 CREATE INDEX i_offline_messages_username ON offline_messages(username);
 
-
 CREATE TABLE IF NOT EXISTS auth_nonce (
   username VARCHAR(256) PRIMARY KEY,
   nonce TEXT NOT NULL,
   created_at DATETIME NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chats (
+  id int(11) PRIMARY KEY AUTO_INCREMENT,
+  chatname VARCHAR(256) NOT NULL,
+  creator VARCHAR(256) NOT NULL,
+  channel int(1) NOT NULL default 0,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chats_users (
+  id int(11) PRIMARY KEY AUTO_INCREMENT,
+  chat_id int(11) NOT NULL,
+  username VARCHAR(256) NOT NULL,
+  admin int(1) NOT NULL default 0,
+  created_at DATETIME NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE chats_users ADD UNIQUE chat_user(chat_id, username);
+
+CREATE TABLE IF NOT EXISTS chats_msgs (
+  id int(11) PRIMARY KEY AUTO_INCREMENT,
+  chat_id int(11) NOT NULL,
+  username VARCHAR(256) NOT NULL,
+  msg TEXT NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

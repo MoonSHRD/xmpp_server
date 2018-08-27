@@ -21,7 +21,6 @@ import (
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/module/xep0049"
 	"github.com/ortuman/jackal/module/xep0054"
-	//"github.com/ortuman/jackal/module/xep0077"
 	"github.com/ortuman/jackal/module/xep0092"
 	"github.com/ortuman/jackal/module/xep0191"
 	"github.com/ortuman/jackal/module/xep0199"
@@ -33,6 +32,8 @@ import (
 	"github.com/ortuman/jackal/xml"
 	"github.com/ortuman/jackal/xml/jid"
 	"github.com/pborman/uuid"
+    "github.com/ortuman/jackal/module/xep0077"
+    "github.com/ortuman/jackal/module/xep0045"
 )
 
 const (
@@ -62,9 +63,10 @@ type modules struct {
 	offline      *offline.Offline
 	lastActivity *xep0012.LastActivity
 	discoInfo    *xep0030.DiscoInfo
+    chats        *xep0045.RegisterChat
 	private      *xep0049.Private
 	vCard        *xep0054.VCard
-	//register     *xep0077.Register
+	register     *xep0077.Register
 	version      *xep0092.Version
 	blockingCmd  *xep0191.BlockingCommand
 	ping         *xep0199.Ping
@@ -84,7 +86,7 @@ type inStream struct {
 	activeAuth                  auth.Authenticator
 	mods                        modules
 	actorCh                     chan func()
-	doneCh                      chan<- struct{}
+	doneCh                      chan <- struct{}
 }
 
 func newStream(id string, cfg *streamConfig) stream.C2S {
@@ -249,6 +251,13 @@ func (s *inStream) initializeModules() {
 		mods.all = append(mods.all, mods.lastActivity)
 	}
 
+	// XEP-0045: Multi user chat (https://xmpp.org/extensions/xep-0045.html)
+	if _, ok := s.cfg.modules.Enabled["chats"]; ok {
+		mods.chats = xep0045.New(s)
+		//mods.iqHandlers = append(mods.iqHandlers, mods.chats)
+		mods.all = append(mods.all, mods.chats)
+	}
+
 	// XEP-0049: Private XML Storage (https://xmpp.org/extensions/xep-0049.html)
 	if _, ok := s.cfg.modules.Enabled["private"]; ok {
 		mods.private = xep0049.New(s)
@@ -263,12 +272,12 @@ func (s *inStream) initializeModules() {
 		mods.all = append(mods.all, mods.vCard)
 	}
 
-	// XEP-0077: In-band registration (https://xmpp.org/extensions/xep-0077.html)
-	//if _, ok := s.cfg.modules.Enabled["registration"]; ok {
-	//	mods.register = xep0077.New(&s.cfg.modules.Registration, s)
-	//	mods.iqHandlers = append(mods.iqHandlers, mods.register)
-	//	mods.all = append(mods.all, mods.register)
-	//}
+	//XEP-0077: In-band registration (https://xmpp.org/extensions/xep-0077.html)
+	if _, ok := s.cfg.modules.Enabled["registration"]; ok {
+		mods.register = xep0077.New(&s.cfg.modules.Registration, s)
+		mods.iqHandlers = append(mods.iqHandlers, mods.register)
+		mods.all = append(mods.all, mods.register)
+	}
 
 	// XEP-0092: Software Version (https://xmpp.org/extensions/xep-0092.html)
 	if _, ok := s.cfg.modules.Enabled["version"]; ok {
@@ -361,27 +370,27 @@ func (s *inStream) unauthenticatedFeatures() []xml.XElement {
 		features = append(features, startTLS)
 	}
 
-	// attach SASL mechanisms
-	shouldOfferSASL := (!isSocketTr || (isSocketTr && s.IsSecured()))
-
-	if shouldOfferSASL && len(s.sasl_authenticators) > 0 {
-		mechanisms := xml.NewElementName("mechanisms")
-		mechanisms.SetNamespace(saslNamespace)
-		for _, athr := range s.sasl_authenticators {
-			mechanism := xml.NewElementName("mechanism")
-			mechanism.SetText(athr.Mechanism())
-			mechanisms.AppendElement(mechanism)
-		}
-		features = append(features, mechanisms)
-	}
+	//// attach SASL mechanisms
+	//shouldOfferSASL := (!isSocketTr || (isSocketTr && s.IsSecured()))
+    //
+	//if shouldOfferSASL && len(s.sasl_authenticators) > 0 {
+	//	mechanisms := xml.NewElementName("mechanisms")
+	//	mechanisms.SetNamespace(saslNamespace)
+	//	for _, athr := range s.sasl_authenticators {
+	//		mechanism := xml.NewElementName("mechanism")
+	//		mechanism.SetText(athr.Mechanism())
+	//		mechanisms.AppendElement(mechanism)
+	//	}
+	//	features = append(features, mechanisms)
+	//}
 
 	// allow In-band registration over encrypted stream only
-	//allowRegistration := s.IsSecured()
+	allowRegistration := s.IsSecured()
 
-	//if reg := s.mods.register; reg != nil && allowRegistration {
-	//	registerFeature := xml.NewElementNamespace("register", "http://jabber.org/features/iq-register")
-	//	features = append(features, registerFeature)
-	//}
+	if reg := s.mods.register; reg != nil && allowRegistration {
+		registerFeature := xml.NewElementNamespace("register", "http://jabber.org/features/iq-register")
+		features = append(features, registerFeature)
+	}
 	
     auth_fe := xml.NewElementName("auth")
     auth_fe.SetNamespace(nonSaslNamespace)
@@ -446,13 +455,13 @@ func (s *inStream) handleConnected(elem xml.XElement) {
 
 func (s *inStream) handleAuthenticating(elem xml.XElement) {
     switch elem.Namespace() {
-        case saslNamespace:
-            authr := s.activeAuth
-            s.continueAuthentication(elem, authr)
-            if authr.Authenticated() {
-                s.finishAuthentication(authr.Username())
-            }
-            break
+        //case saslNamespace:
+        //    authr := s.activeAuth
+        //    s.continueAuthentication(elem, authr)
+        //    if authr.Authenticated() {
+        //        s.finishAuthentication(authr.Username())
+        //    }
+        //    break
         case nonSaslNamespace:
             authr := s.activeAuth
             s.continueAuthentication(elem, authr)
@@ -779,7 +788,11 @@ func (s *inStream) processComponentStanza(stanza xml.Stanza) {
 }
 
 func (s *inStream) processIQ(iq *xml.IQ) {
+	if s.mods.chats.ProcessElem(iq) {
+		return
+	}
 	toJID := iq.ToJID()
+	//fromJID := iq.FromJID()
 
 	replyOnBehalf := toJID.IsBare() && host.IsLocalHost(toJID.Domain())
 	if !replyOnBehalf {
@@ -821,6 +834,11 @@ func (s *inStream) processPresence(presence *xml.Presence) {
 	if replyOnBehalf && (presence.IsAvailable() || presence.IsUnavailable()) {
 		s.ctx.SetObject(presence, presenceCtxKey)
 	}
+	
+	if s.mods.chats.ProcessElem(presence) {
+	    return
+    }
+	
 	// deliver subscription presence to roster module
 	if rst := s.mods.roster; rst != nil {
 		rst.ProcessPresence(presence)
@@ -837,6 +855,10 @@ func (s *inStream) processPresence(presence *xml.Presence) {
 
 func (s *inStream) processMessage(message *xml.Message) {
 	toJID := message.ToJID()
+    
+    if s.mods.chats.ProcessElem(message) {
+        return
+    }
 
 sendMessage:
 	err := router.Route(message)

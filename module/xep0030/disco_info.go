@@ -88,7 +88,7 @@ func (di *DiscoInfo) Entity(jid, node string) *Entity {
 	return e
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the disco info module.
 func (di *DiscoInfo) MatchesIQ(iq *xml.IQ) bool {
 	q := iq.Elements().Child("query")

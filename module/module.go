@@ -21,7 +21,7 @@ type Module interface {
 type IQHandler interface {
 	Module
 
-	// MatchesIQ returns whether or not an IQ should be
+	// MatchesPresence returns whether or not an IQ should be
 	// processed by the module.
 	MatchesIQ(iq *xml.IQ) bool
 

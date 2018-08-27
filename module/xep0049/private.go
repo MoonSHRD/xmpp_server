@@ -38,7 +38,7 @@ func New(stm stream.C2S) *Private {
 func (x *Private) RegisterDisco(_ *xep0030.DiscoInfo) {
 }
 
-// MatchesIQ returns whether or not an IQ should be
+// MatchesPresence returns whether or not an IQ should be
 // processed by the private storage module.
 func (x *Private) MatchesIQ(iq *xml.IQ) bool {
 	return iq.Elements().ChildNamespace("query", privateNamespace) != nil
