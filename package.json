@@ -1,0 +1,25 @@
+{
+  "name": "jackal",
+  "version": "0.3.0",
+  "description": "**Forked from [ortuman/jackal](https://github.com/ortuman/jackal)**",
+  "main": "echo \"Error: no main script specified\" && exit 1",
+  "dependencies": {
+    "db-migrate": "^0.11.1",
+    "db-migrate-mysql": "^1.1.10",
+    "eth-crypto": "^1.2.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoonSHRD/xmpp_server.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MoonSHRD/xmpp_server/issues"
+  },e
+  "homepage": "https://github.com/MoonSHRD/xmpp_server#readme"
+}
