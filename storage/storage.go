@@ -14,6 +14,7 @@ import (
 	_ "github.com/ortuman/jackal/storage/badgerdb"
 	"github.com/ortuman/jackal/storage/sql"
 	"github.com/ortuman/jackal/xml"
+
 )
 
 type userStorage interface {
@@ -126,7 +127,7 @@ type blockListStorage interface {
 
 
 type messageStorage interface {
-	write_msg_to_db(recipient, sender, msg string) error
+	WriteMsgToDB(recipient, sender, msg string) (bool, error)
 }
 // Storage represents an entity storage interface.
 type Storage interface {

@@ -230,11 +230,14 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
     case *xml.Message:
     
         if !stanza.IsGroupChat() {
-            msg := stanza.Element.Elements()
-            ms := msg.Child("body")
-            storage.Instance().write_msg_to_db()
-
-
+            msg_elem := stanza.Element.Elements()
+            msg := msg_elem.Child("body")
+            for _, user := range router.UserStreams(to.Node()) {
+                if user.Username() == to.Node() {
+                    storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text()) // save_msg :=
+                    return false
+                }
+            }
             return false
         }
         x.ProcessMessage(stanza)
