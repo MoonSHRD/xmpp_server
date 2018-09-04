@@ -121,6 +121,7 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
     
     elem:=xml.NewElementName("presence")
     elem.SetAttribute("channel",chat.IsChannel())
+    elem.SetAttribute("contractaddress",contractaddress)
     elem.SetAttribute("avatar",chat.Avatar)
     elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+chat.Chatname)
     elem.SetTo(user.NDString())
