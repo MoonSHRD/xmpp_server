@@ -3,6 +3,7 @@ package model
 type Chat struct {
     Id int64
     Chatname string
+    Contractaddress string
     Creator string
     Channel bool
     Avatar string
