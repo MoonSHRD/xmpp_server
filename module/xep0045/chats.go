@@ -14,6 +14,7 @@ import (
 )
 
 const chatNamespace = "http://jabber.org/protocol/muc"
+const chatEventNamespace = "http://jabber.org/protocol/muc#event"
 const discoNamespace = "http://jabber.org/protocol/disco#items"
 
 type RegisterChat struct {
@@ -52,6 +53,10 @@ func New(stm stream.C2S) *RegisterChat {
     return &RegisterChat{
         stm: stm,
     }
+}
+
+func sendChatEvent(user model.User,)  {
+
 }
 
 
@@ -247,11 +252,15 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
         x.ProcessMessage(stanza)
 
     case *xml.IQ:
-        el := stanza.Elements().ChildNamespace("query", discoNamespace)
-        if el == nil{
-           return false
+        if stanza.Elements().ChildNamespace("query", discoNamespace)!= nil{
+            x.FindGroup(stanza)
+            return true
         }
-        x.FindGroup(stanza)
+        if stanza.Elements().ChildNamespace("x", chatEventNamespace)!= nil{
+            x.ProcessChatEvent(stanza)
+            return true
+        }
+        return false
     }
 
     return true
@@ -277,4 +286,26 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
     elem.SetType("result")
     elem.AppendElement(q_elem)
     x.stm.SendElement(elem)
+}
+
+func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
+    
+    chat_id,err:=strconv.ParseInt(iq.ToJID().Node(),10,64)
+    if err !=nil {
+        x.stm.SendElement(iq.BadRequestError())
+        return
+    }
+    chat,err:=storage.Instance().FetchChat(chat_id)
+    if err !=nil {
+        x.stm.SendElement(iq.BadRequestError())
+        return
+    }
+    
+    eventItem:=iq.Elements().Child("x").Elements().Child("item")
+    switch eventItem.Attributes().Get("type") {
+    case "suggestion":
+        elem:=xml.NewElementFromElement(iq)
+        elem.SetTo(chat.Creator+"@localhost")
+        x.stm.SendElement(elem)
+    }
 }
