@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ortuman/jackal/model"
+    "fmt"
 )
 
 // InsertOrUpdateUser inserts a new user entity into storage,
@@ -41,7 +42,13 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (int64,error) {
         Values(values...).
         Suffix(suffix, suffixArgs...)
     res, err := q.RunWith(s.db).Exec()
+    if err!=nil {
+        fmt.Println(err)
+    }
     id,err:=res.LastInsertId()
+    if err!=nil {
+        fmt.Println(err)
+    }
     return id,err
 }
 
