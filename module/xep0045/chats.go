@@ -165,6 +165,12 @@ func (x *RegisterChat) sendToUsers(elem *xml.Element, users model.ChatUsers) {
     }
 }
 
+func (x *RegisterChat) sendToAnotherUser(elem *xml.Element, username string) {
+    for _,u_stream := range router.UserStreams(username) {
+        u_stream.SendElement(elem)
+    }
+}
+
 func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     
     node := msg.ToJID().Node()
@@ -306,6 +312,7 @@ func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
     case "suggestion":
         elem:=xml.NewElementFromElement(iq)
         elem.SetTo(chat.Creator+"@localhost")
-        x.stm.SendElement(elem)
+        x.sendToAnotherUser(elem,chat.Creator)
+        //x.stm.SendElement(elem)
     }
 }
