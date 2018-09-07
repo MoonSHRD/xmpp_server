@@ -302,7 +302,7 @@ func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
         return
     }
     chat,err:=storage.Instance().FetchChat(chat_id)
-    if err !=nil {
+    if err !=nil || chat==nil {
         x.stm.SendElement(iq.BadRequestError())
         return
     }
