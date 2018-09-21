@@ -33,13 +33,13 @@ type userStorage interface {
 }
 
 type chatStorage interface {
-	InsertOrUpdateChat(c *model.Chat) (int64,error)
-    InsertChatUser(chat_id int64,username string,admin bool) error
-    DeleteChatUser(chat_id int64,username string) error
-    FetchChat(chat_id int64) (*model.Chat, error)
-    FetchChatUsers(chat_id int64) (model.ChatUsers, error)
-    DeleteChat(chat_id int64) error
-    ChatExists(chat_id int64) (bool, error)
+	InsertOrUpdateChat(c *model.Chat) (string, error)
+    InsertChatUser(chat_id string,username string,admin bool) error
+    DeleteChatUser(chat_id string,username string) error
+    FetchChat(chat_id string) (*model.Chat, error)
+    FetchChatUsers(chat_id string) (model.ChatUsers, error)
+    DeleteChat(chat_id string) error
+    ChatExists(chat_id string) (bool, error)
 	FindGroups(chat_name string) []model.Chat
 	//InsertOrUpdateChatMessage(user *model.User) error
 	//GetChatMsgs(user *model.User) error
@@ -127,7 +127,7 @@ type blockListStorage interface {
 
 
 type messageStorage interface {
-	WriteMsgToDB(recipient, sender, msg string) (bool, error)
+	WriteMsgToDB(recipient, sender, msg string) (int64, error)
 }
 // Storage represents an entity storage interface.
 type Storage interface {

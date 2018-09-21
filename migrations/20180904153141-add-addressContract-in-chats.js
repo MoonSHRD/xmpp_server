@@ -15,13 +15,9 @@ exports.setup = function(options, seedLink) {
 };
 
 exports.up = function(db, callback) {
-    db.addColumn('chats', 'contractaddress', {
-        type: 'varchar',
-        notNull: true,
-        length: 42
-    }, callback);
+    db.changeColumn('chats', 'id', {type: 'varchar', length: 42, autoIncrement: false, notNull: true}, callback);
 };
 
 exports.down = function(db, callback) {
-    db.removeColumn('chats', 'contractaddress', callback);
+    db.changeColumn('chats', 'id', {type: 'int', length: 11, autoIncrement: true, notNull: false}, callback);
 };

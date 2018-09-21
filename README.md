@@ -6,4 +6,6 @@
 
 [db-migrate](https://www.npmjs.com/package/db-migrate)
 
-```node node_modules/db-migrate/bin/db-migrate```
+```create new migrate: db-migrate create <migrationname>```
+
+```node node_modules/db-migrate/bin/db-migrate up```

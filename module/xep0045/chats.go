@@ -11,6 +11,7 @@ import (
     "github.com/ortuman/jackal/router"
     "time"
     "github.com/ortuman/jackal/helpers"
+    "github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 const chatNamespace = "http://jabber.org/protocol/muc"
@@ -64,21 +65,23 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
     var err error
     to:=presence.ToJID()
     from:=presence.FromJID()
-    contractaddress := presence.Attributes().Get("contractaddress")
+    //contractaddress := presence.Attributes().Get("contractaddress")
     channel := false
     if presence.Attributes().Get("channel")=="1" {
         channel = true
     }
-    chat:=model.Chat{Chatname:to.Node(),Channel:channel,Creator:from.Node(), Contractaddress:contractaddress}
+    chat:=model.Chat{Chatname:to.Node(),Channel:channel,Creator:from.Node()}
     //todo: deal with double chat insert
-    chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
-    chat.Avatar=helpers.GenerateThumb(chat.Id)
+    newAcc, err := keystore.NewKeyStore("", keystore.StandardScryptN, keystore.StandardScryptP).NewAccount(from.Node())
+    chat.Id = newAcc.Address.Hex()
+    seed, _ := strconv.ParseInt(chat.Id, 10, 64)
+    chat.Avatar = helpers.GenerateThumb(seed)
     chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
     storage.Instance().InsertChatUser(chat.Id,from.Node(),true)
     if err != nil {
         x.stm.SendElement(presence.NotAllowedError())
     } else {
-        x.sendJoinAcceptance(from,&chat,roles.owner, contractaddress)
+        x.sendJoinAcceptance(from, &chat, roles.owner)
         //x_elem:=xml.NewElementName("x")
         //x_elem.SetNamespace(chatNamespace+"#user")
         //x_elem.AppendElement(generateRoleItem(roles.owner))
@@ -94,17 +97,17 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
 }
 
 
-func (x *RegisterChat) sendJoinEvent(chat_id int64,user *jid.JID, contractaddress string) {
+func (x *RegisterChat) sendJoinEvent(chat_id string,user *jid.JID) {
     chat,_:=storage.Instance().FetchChat(chat_id)
-    x.sendJoinAcceptance(user,chat,roles.paticipant, contractaddress)
+    x.sendJoinAcceptance(user,chat,roles.paticipant)
     
     x_elem:=xml.NewElementName("x")
     x_elem.SetNamespace(chatNamespace+"#user")
     
     elem:=xml.NewElementName("presence")
-    elem.SetFrom(strconv.FormatInt(chat_id,10)+"@localhost")
+    elem.SetFrom(chat_id + "@localhost")
     elem.SetAttribute("user_joined",user.NDString())
-    elem.SetAttribute("contractaddress", contractaddress)
+    //elem.SetAttribute("contractaddress", contractaddress)
     elem.AppendElement(x_elem)
     
     chat_u,_ := storage.Instance().FetchChatUsers(chat_id)
@@ -118,7 +121,7 @@ func (x *RegisterChat) sendJoinEvent(chat_id int64,user *jid.JID, contractaddres
     //}
 }
 
-func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role user_role, contractaddress string) {
+func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role user_role) {
     
     x_elem:=xml.NewElementName("x")
     x_elem.SetNamespace(chatNamespace+"#user")
@@ -126,9 +129,9 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
     
     elem:=xml.NewElementName("presence")
     elem.SetAttribute("channel",chat.IsChannel())
-    elem.SetAttribute("contractaddress",contractaddress)
+    //elem.SetAttribute("contractaddress",contractaddress)
     elem.SetAttribute("avatar",chat.Avatar)
-    elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+chat.Chatname)
+    elem.SetFrom(chat.Id + "@localhost/"+chat.Chatname)
     elem.SetTo(user.NDString())
     elem.AppendElement(x_elem)
     
@@ -140,20 +143,21 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
     //var err error
     to:=presence.ToJID()
     from:=presence.FromJID()
-    contractaddress := presence.Attributes().Get("contractaddress")
-    id,err:=strconv.ParseInt(to.Node(),10,64)
-    if err!=nil{
+    //contractaddress := presence.Attributes().Get("contractaddress")
+    groupName := to.Node()
+    //x.CreateChat(presence)
+    //if err!=nil{
+    //    x.CreateChat(presence)
+    //    return
+    //}
+    exist,err:=storage.Instance().ChatExists(groupName)
+    if !exist || err!=nil {
         x.CreateChat(presence)
         return
     }
-    exist,err:=storage.Instance().ChatExists(id)
-    if exist && err!=nil {
-        x.CreateChat(presence)
-        return
-    }
-    
-    storage.Instance().InsertChatUser(id,from.Node(),false)
-    x.sendJoinEvent(id,from, contractaddress)
+    //todo Защита от перезаписи админа
+    storage.Instance().InsertChatUser(groupName, from.Node(),false)
+    x.sendJoinEvent(groupName,from)
 }
 
 func (x *RegisterChat) sendToUsers(elem *xml.Element, users model.ChatUsers) {
@@ -179,11 +183,11 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
         return
     }
     
-    id,err:=strconv.ParseInt(node,10,64)
-    if err != nil {
-        x.stm.SendElement(msg.BadRequestError())
-        return
-    }
+    id:=node
+    //if err != nil {
+    //    x.stm.SendElement(msg.BadRequestError())
+    //    return
+    //}
     
     exist,err := storage.Instance().ChatExists(id)
     
@@ -245,11 +249,27 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
     case *xml.Message:
     
         if !stanza.IsGroupChat() {
-            msg_elem := stanza.Element.Elements()
-            msg := msg_elem.Child("body")
+            stanz_elems := stanza.Element.Elements()
+            msg := stanz_elems.Child("body")
+            id_user := stanz_elems.Child("id")
             for _, user := range router.UserStreams(to.Node()) {
                 if user.Username() == to.Node() {
-                    storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text()) // save_msg :=
+                    id_db, err := storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text())
+                    if err != nil {
+                        return false
+                    }
+                    q_elem := xml.NewElementName("confirmation")
+                    q_elem.SetNamespace(discoNamespace)
+                    item := xml.NewElementName("item")
+                    item.SetAttribute("userid", id_user.Text())
+                    item.SetAttribute("DBid", strconv.Itoa(int(id_db)))
+                    q_elem.AppendElement(item)
+                    elem := xml.NewElementName("iq")
+                    elem.SetFrom("localhost")
+                    elem.SetTo(stanza.FromJID().NDString())
+                    elem.SetType("result")
+                    elem.AppendElement(q_elem)
+                    x.stm.SendElement(elem)
                     return false
                 }
             }
@@ -279,9 +299,9 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
     res := storage.Instance().FindGroups(a)
     for _, group := range(res){
        item := xml.NewElementName("item")
-       item.SetAttribute("jid", strconv.Itoa(int(group.Id)) + "@localhost")
+       item.SetAttribute("jid", group.Id + "@localhost")
        item.SetAttribute("name", group.Chatname)
-       item.SetAttribute("contractaddress", group.Contractaddress)
+       //item.SetAttribute("contractaddress", group.Contractaddress)
        item.SetAttribute("avatar", group.Avatar)
        item.SetAttribute("channel", group.IsChannel())
        q_elem.AppendElement(item)
@@ -296,11 +316,11 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
 
 func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
     
-    chat_id,err:=strconv.ParseInt(iq.ToJID().Node(),10,64)
-    if err !=nil {
-        x.stm.SendElement(iq.BadRequestError())
-        return
-    }
+    chat_id := iq.ToJID().Node()
+    //if err !=nil {
+    //    x.stm.SendElement(iq.BadRequestError())
+    //    return
+    //}
     chat,err:=storage.Instance().FetchChat(chat_id)
     if err !=nil || chat==nil {
         x.stm.SendElement(iq.BadRequestError())
