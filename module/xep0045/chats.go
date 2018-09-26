@@ -217,6 +217,11 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     elem.SetFrom(msg.To())
     x_elem:=xml.NewElementName("x")
     x_elem.SetAttribute("stamp",time.Now().String())
+    message := msg.Elements().Child("body")
+    id_user := msg.Elements().Child("id")
+    id_db, _ := storage.Instance().WriteMsgToDB(id, msg.FromJID().Node(), message.Text(), 1)
+    x.SendConfirmation(id_user, int(id_db), msg.FromJID().Node())
+
     msg.AppendElement(x_elem)
     
     x.sendToUsers(elem,chat_u)
@@ -258,18 +263,19 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
                     if err != nil {
                         return false
                     }
-                    q_elem := xml.NewElementName("confirmation")
-                    q_elem.SetNamespace(discoNamespace)
-                    item := xml.NewElementName("item")
-                    item.SetAttribute("userid", id_user.Text())
-                    item.SetAttribute("DBid", strconv.Itoa(int(id_db)))
-                    q_elem.AppendElement(item)
-                    elem := xml.NewElementName("iq")
-                    elem.SetFrom("localhost")
-                    elem.SetTo(stanza.FromJID().NDString())
-                    elem.SetType("result")
-                    elem.AppendElement(q_elem)
-                    x.stm.SendElement(elem)
+                    //q_elem := xml.NewElementName("confirmation")
+                    //q_elem.SetNamespace(discoNamespace)
+                    //item := xml.NewElementName("item")
+                    //item.SetAttribute("userid", id_user.Text())
+                    //item.SetAttribute("DBid", strconv.Itoa(int(id_db)))
+                    //q_elem.AppendElement(item)
+                    //elem := xml.NewElementName("iq")
+                    //elem.SetFrom("localhost")
+                    //elem.SetTo(stanza.FromJID().NDString())
+                    //elem.SetType("result")
+                    //elem.AppendElement(q_elem)
+                    //x.stm.SendElement(elem)
+                    x.SendConfirmation(id_user, int(id_db), stanza.FromJID().NDString())
                     return false
                 }
             }
@@ -335,4 +341,18 @@ func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
         x.sendToAnotherUser(elem,chat.Creator)
         //x.stm.SendElement(elem)
     }
+}
+func (x *RegisterChat) SendConfirmation(idUser xml.XElement, id_db int, to string) {
+    q_elem := xml.NewElementName("confirmation")
+    q_elem.SetNamespace(discoNamespace)
+    item := xml.NewElementName("item")
+    item.SetAttribute("userid", idUser.Text())
+    item.SetAttribute("DBid", strconv.Itoa(int(id_db)))
+    q_elem.AppendElement(item)
+    elem := xml.NewElementName("iq")
+    elem.SetFrom("localhost")
+    elem.SetTo(to)
+    elem.SetType("result")
+    elem.AppendElement(q_elem)
+    x.stm.SendElement(elem)
 }
