@@ -4,7 +4,7 @@ type Chat struct {
     Id string
     Chatname string
     Creator string
-    Channel bool
+    Type string
     Avatar string
 }
 
@@ -15,10 +15,10 @@ type ChatUser struct {
 
 type ChatUsers map[string]ChatUser
 
-func (chat Chat) IsChannel() string {
-    channel:="0"
-    if chat.Channel {
-        channel="1"
-    }
-    return channel
-}
+//func (chat Chat) IsChannel() string {
+//    channel:="0"
+//    if chat.Channel {
+//        channel="1"
+//    }
+//    return channel
+//}

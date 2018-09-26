@@ -44,5 +44,8 @@ node_modules/
 # Jackal config
 jackal.yml
 
-# Database config
-database.json
+# JSON config
+*.json
+
+# Crypto files
+UTC*

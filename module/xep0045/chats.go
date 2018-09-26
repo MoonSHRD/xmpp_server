@@ -37,6 +37,20 @@ var roles = struct {
     paticipant:user_role{"member","paticipant"},
 }
 
+type chat_type struct {
+    kind string
+}
+
+var types = struct {
+    user      chat_type
+    group      chat_type
+    channel chat_type
+}{
+    user:      chat_type{"user_chat"},
+    group:      chat_type{"group"},
+    channel: chat_type{"channel"},
+}
+
 func (x *RegisterChat) RegisterDisco(discoInfo *xep0030.DiscoInfo) {
     // register disco feature
     discoInfo.Entity(x.stm.Domain(), "").AddFeature(chatNamespace)
@@ -65,12 +79,16 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
     var err error
     to:=presence.ToJID()
     from:=presence.FromJID()
-    //contractaddress := presence.Attributes().Get("contractaddress")
-    channel := false
-    if presence.Attributes().Get("channel")=="1" {
-        channel = true
+    kind := types.channel.kind
+    chat:=model.Chat{Chatname:to.Node(),Type:kind,Creator:from.Node()}
+    if presence.Attributes().Get("type")=="user_chat" {
+        chat.Type = types.user.kind
+        chat.Chatname = ""
+        //todo: remake this shit or create new
     }
-    chat:=model.Chat{Chatname:to.Node(),Channel:channel,Creator:from.Node()}
+    if presence.Attributes().Get("type")=="group" {
+        chat.Type = types.group.kind
+    }
     //todo: deal with double chat insert
     newAcc, err := keystore.NewKeyStore("", keystore.StandardScryptN, keystore.StandardScryptP).NewAccount(from.Node())
     chat.Id = newAcc.Address.Hex()
@@ -128,7 +146,7 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
     x_elem.AppendElement(generateRoleItem(role))
     
     elem:=xml.NewElementName("presence")
-    elem.SetAttribute("channel",chat.IsChannel())
+    elem.SetAttribute("channel",chat.Type)
     //elem.SetAttribute("contractaddress",contractaddress)
     elem.SetAttribute("avatar",chat.Avatar)
     elem.SetFrom(chat.Id + "@localhost/"+chat.Chatname)
@@ -204,12 +222,12 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     chat,_ := storage.Instance().FetchChat(id)
     chat_u,_ := storage.Instance().FetchChatUsers(id)
     
-    if chat.Channel && chat_u[msg.FromJID().Node()].Role!="owner" {
+    if chat.Type == "channel" && chat_u[msg.FromJID().Node()].Role!="owner" {
         x.stm.SendElement(msg.BadRequestError())
         return
     }
     
-    if chat.Channel {
+    if chat.Type == "group" {
         msg.SetAttribute("sender",msg.From())
     }
     
@@ -258,6 +276,10 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
             msg := stanz_elems.Child("body")
             id_user := stanz_elems.Child("id")
             for _, user := range router.UserStreams(to.Node()) {
+                exist, _ := storage.Instance().UserExists(to.Node())
+                if !exist {
+                    return false
+                }
                 if user.Username() == to.Node() {
                     id_db, err := storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text(), 1)
                     if err != nil {
@@ -309,7 +331,7 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
        item.SetAttribute("name", group.Chatname)
        //item.SetAttribute("contractaddress", group.Contractaddress)
        item.SetAttribute("avatar", group.Avatar)
-       item.SetAttribute("channel", group.IsChannel())
+       item.SetAttribute("channel", group.Type)
        q_elem.AppendElement(item)
     }
     elem := xml.NewElementName("iq")

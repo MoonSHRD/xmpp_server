@@ -16,17 +16,17 @@ import (
 // or updates it in case it's been previously inserted.
 func (s *Storage) InsertOrUpdateChat(c *model.Chat) (string, error) {
     
-    var channel int
+    //var channel int
     var suffix string
     var suffixArgs []interface{}
     
-    if c.Channel {
-        channel=1
-    } else {
-        channel=0
-    }
+    //if c.Channel {
+    //    channel=1
+    //} else {
+    //    channel=0
+    //}
     columns := []string{"id", "chatname", "creator", "type", "created_at", "updated_at", "avatar"}
-    values := []interface{}{c.Id, c.Chatname, c.Creator, channel, nowExpr, nowExpr, c.Avatar}
+    values := []interface{}{c.Id, c.Chatname, c.Creator, c.Type, nowExpr, nowExpr, c.Avatar}
     
     if c.Id!= ""{
         //columns=append([]string{"id"},columns...)
@@ -101,7 +101,7 @@ func (s *Storage) FetchChat(chat_id string) (*model.Chat, error) {
 	
 	var c model.Chat
 
-	err := q.RunWith(s.db).QueryRow().Scan(&c.Id, &c.Chatname, &c.Creator, &c.Channel, &c.Avatar)
+	err := q.RunWith(s.db).QueryRow().Scan(&c.Id, &c.Chatname, &c.Creator, &c.Type, &c.Avatar)
 	switch err {
 	case nil:
 		return &c, nil
@@ -180,7 +180,7 @@ func (s *Storage) FindGroups(chat_name string) []model.Chat{
 	var list_chats []model.Chat
 	for records.Next(){
 	    chat:=model.Chat{}
-		records.Scan(&chat.Id, &chat.Chatname, &chat.Creator, &chat.Channel, &chat.Avatar)
+		records.Scan(&chat.Id, &chat.Chatname, &chat.Creator, &chat.Type, &chat.Avatar)
 		list_chats = append(list_chats, chat)
 	}
 	return list_chats
