@@ -2,7 +2,7 @@
   "dev": {
     "host": "localhost",
     "user": "jackal",
-    "password" : "password",
+    "password" : "yeba",
     "database": "jackal",
     "driver": "mysql",
     "multipleStatements": true

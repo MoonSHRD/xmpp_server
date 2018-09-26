@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS chats_users (
   created_at DATETIME NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-ALTER TABLE chats_users ADD UNIQUE chat_user(chat_id, username);
+-- ALTER TABLE chats_users ADD UNIQUE chat_user(chat_id, username);
 
 CREATE TABLE IF NOT EXISTS chats_msgs (
   id int(11) PRIMARY KEY AUTO_INCREMENT,
