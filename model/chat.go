@@ -10,7 +10,7 @@ type Chat struct {
 
 type ChatUser struct {
     Username string
-    Admin int
+    Role string
 }
 
 type ChatUsers map[string]ChatUser

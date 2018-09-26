@@ -77,7 +77,7 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
     seed, _ := strconv.ParseInt(chat.Id, 10, 64)
     chat.Avatar = helpers.GenerateThumb(seed)
     chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
-    storage.Instance().InsertChatUser(chat.Id,from.Node(),true)
+    storage.Instance().InsertChatUser(chat.Id,from.Node(), roles.owner.affiliation)
     if err != nil {
         x.stm.SendElement(presence.NotAllowedError())
     } else {
@@ -156,7 +156,7 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
         return
     }
     //todo Защита от перезаписи админа
-    storage.Instance().InsertChatUser(groupName, from.Node(),false)
+    storage.Instance().InsertChatUser(groupName, from.Node(),roles.paticipant.affiliation)
     x.sendJoinEvent(groupName,from)
 }
 
@@ -204,7 +204,7 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     chat,_ := storage.Instance().FetchChat(id)
     chat_u,_ := storage.Instance().FetchChatUsers(id)
     
-    if chat.Channel && chat_u[msg.FromJID().Node()].Admin!=1 {
+    if chat.Channel && chat_u[msg.FromJID().Node()].Role!="owner" {
         x.stm.SendElement(msg.BadRequestError())
         return
     }

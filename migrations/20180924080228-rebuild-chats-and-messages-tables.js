@@ -18,7 +18,6 @@ exports.setup = function(options, seedLink) {
 exports.up = function(db, callback) {
     db.addColumn("chats", "bio", {type:"text"}, callback);
     db.addColumn("chats", "type", {type:"integer", length:1, notNull:true}, callback);
-    db.addColumn("chats", "role", {type:"integer", length:1}, callback);
     db.addColumn("messages", "delivered", {type: "integer", length:1, notNull:true}, callback);
 
     db.changeColumn("chats_users", "chat_id", {type:"varchar", length:42, notNull:true}, callback);
@@ -31,7 +30,6 @@ exports.up = function(db, callback) {
 exports.down = function(db, callback) {
     db.removeColumn("chats", "bio", callback);
     db.removeColumn("chats", "type", callback);
-    db.removeColumn("chats", "role", callback);
     db.removeColumn("messages", "delivered", callback);
 
     db.changeColumn("chats_users", "chat_id", {type:"int", length:11}, callback);

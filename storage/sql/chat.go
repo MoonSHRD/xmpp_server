@@ -25,9 +25,8 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (string, error) {
     } else {
         channel=0
     }
-    role := 0
-    columns := []string{"id", "chatname", "creator", "type", "created_at", "updated_at", "avatar", "role"}
-    values := []interface{}{c.Id, c.Chatname, c.Creator, channel, nowExpr, nowExpr, c.Avatar, role}
+    columns := []string{"id", "chatname", "creator", "type", "created_at", "updated_at", "avatar"}
+    values := []interface{}{c.Id, c.Chatname, c.Creator, channel, nowExpr, nowExpr, c.Avatar}
     
     if c.Id!= ""{
         //columns=append([]string{"id"},columns...)
@@ -52,20 +51,19 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (string, error) {
     return c.Id, err
 }
 
-func (s *Storage) InsertChatUser(chat_id string,username string,admin bool) error {
+func (s *Storage) InsertChatUser(chat_id string,username string, role string) error {
     
     //var columns []string
     //var values []interface{}
-    var i_admin int
+
+    //if admin {
+    //    i_admin=1
+    //} else {
+    //    i_admin=0
+    //}
     
-    if admin {
-        i_admin=1
-    } else {
-        i_admin=0
-    }
-    
-    columns := []string{"chat_id", "username", "admin", "created_at"}
-    values := []interface{}{chat_id, username, i_admin, nowExpr}
+    columns := []string{"chat_id", "username", "role", "created_at"}
+    values := []interface{}{chat_id, username, role, nowExpr}
     
     //var suffix string
     //var suffixArgs []interface{}
@@ -87,7 +85,7 @@ func (s *Storage) DeleteChatUser(chat_id string,username string) error {
         if err != nil {
             return err
         }
-        _, err = sq.Delete("chats_msgs").Where(sq.Eq{"chat_id": chat_id,"username":username}).RunWith(tx).Exec()
+        _, err = sq.Delete("messages").Where(sq.Eq{"chat_id": chat_id,"username":username}).RunWith(tx).Exec()
         if err != nil {
             return err
         }
@@ -97,7 +95,7 @@ func (s *Storage) DeleteChatUser(chat_id string,username string) error {
 
 // FetchUser retrieves from storage a user entity.
 func (s *Storage) FetchChat(chat_id string) (*model.Chat, error) {
-	q := sq.Select("id", "chatname", "creator", "channel", "avatar").
+	q := sq.Select("id", "chatname", "creator", "type", "avatar").
 		From("chats").
 		Where(sq.Eq{"id": chat_id})
 	
@@ -116,7 +114,7 @@ func (s *Storage) FetchChat(chat_id string) (*model.Chat, error) {
 
 // FetchUser retrieves from storage a user entity.
 func (s *Storage) FetchChatUsers(chat_id string) (model.ChatUsers, error) {
-	q := sq.Select("username", "admin").
+	q := sq.Select("username", "role").
 		From("chats_users").
 		Where(sq.Eq{"chat_id": chat_id})
 
@@ -125,10 +123,10 @@ func (s *Storage) FetchChatUsers(chat_id string) (model.ChatUsers, error) {
 	case nil:
 	    users := model.ChatUsers{}
 	    var username string
-	    var admin int
+	    var role string
 	    for rows.Next() {
-            rows.Scan(&username,&admin)
-            users[username]=model.ChatUser{username,admin}
+            rows.Scan(&username,&role)
+            users[username]=model.ChatUser{username,role}
         }
 		return users, nil
 	case sql.ErrNoRows:
@@ -142,7 +140,7 @@ func (s *Storage) FetchChatUsers(chat_id string) (model.ChatUsers, error) {
 func (s *Storage) DeleteChat(chat_id string) error {
 	return s.inTransaction(func(tx *sql.Tx) error {
 		var err error
-		_, err = sq.Delete("chats_msg").Where(sq.Eq{"chat_id": chat_id}).RunWith(tx).Exec()
+		_, err = sq.Delete("messages").Where(sq.Eq{"chat_id": chat_id}).RunWith(tx).Exec()
 		if err != nil {
 			return err
 		}
@@ -160,7 +158,9 @@ func (s *Storage) DeleteChat(chat_id string) error {
 
 // UserExists returns whether or not a user exists within storage.
 func (s *Storage) ChatExists(chat_name string) (bool, error) {
-	q := sq.Select("COUNT(*)").From("chats").Where(sq.Eq{"chatname": chat_name})
+	//q := sq.Select("COUNT(*)").From("chats").Where(sq.Eq{"chatname": chat_name})
+	q := sq.Select("COUNT(*)").From("chats").Where("chatname = ? or id = ?", "%" + chat_name + "%", chat_name)
+
 	var count int
 	err := q.RunWith(s.db).QueryRow().Scan(&count)
 	switch err {

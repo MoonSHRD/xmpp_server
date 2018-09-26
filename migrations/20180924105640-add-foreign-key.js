@@ -25,8 +25,8 @@ exports.up = function(db, callback) {
 exports.down = function(db, callback) {
     db.removeForeignKey("messages", "fk-messages-chats", callback);
     db.removeForeignKey("messages", "fk-messages-users", callback);
-    db.removeForeignKey("chat_users", "fk-chats_users-users", callback);
-    db.removeForeignKey("chat_users", "fk-chats_users-chats", callback);
+    db.removeForeignKey("chats_users", "fk-chats_users-users", callback);
+    db.removeForeignKey("chats_users", "fk-chats_users-chats", callback);
   return null;
 };
 
