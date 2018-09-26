@@ -6,7 +6,8 @@
 package roster
 
 import (
-	"sync"
+    "github.com/ortuman/jackal/model"
+    "sync"
 
 	"github.com/ortuman/jackal/host"
 	"github.com/ortuman/jackal/log"
@@ -126,6 +127,9 @@ func (ph *PresenceHandler) processSubscribe(presence *xml.Presence) error {
 func (ph *PresenceHandler) processSubscribed(presence *xml.Presence) error {
 	userJID := presence.ToJID().ToBareJID()
 	contactJID := presence.FromJID().ToBareJID()
+    
+    chat:=model.Chat{}
+    chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
 
 	log.Infof("processing 'subscribed' - user: %s (%s)", userJID, contactJID)
 
