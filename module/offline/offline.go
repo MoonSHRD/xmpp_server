@@ -86,7 +86,7 @@ func (o *Offline) archiveMessage(message *xml.Message) {
 	}
 	delayed := xml.NewElementFromElement(message)
 	delayed.Delay(o.stm.Domain(), "Offline Storage")
-	if err := storage.Instance().InsertOfflineMessage(delayed, toJid.Node()); err != nil {
+	if _, err := storage.Instance().WriteMsgToDB(delayed.Text(), toJid.Node(), message.Text(), 0); err != nil {
 		log.Errorf("%v", err)
 		return
 	}

@@ -127,7 +127,7 @@ type blockListStorage interface {
 
 
 type messageStorage interface {
-	WriteMsgToDB(recipient, sender, msg string) (int64, error)
+	WriteMsgToDB(recipient, sender, msg string, isOnline int) (int64, error)
 }
 // Storage represents an entity storage interface.
 type Storage interface {

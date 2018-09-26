@@ -16,8 +16,10 @@ exports.setup = function(options, seedLink) {
 
 exports.up = function(db, callback) {
     db.changeColumn('chats', 'id', {type: 'varchar', length: 42, autoIncrement: false, notNull: true}, callback);
+    db.renameColumn("messages", "recipient", "chat_id", callback);
 };
 
 exports.down = function(db, callback) {
     db.changeColumn('chats', 'id', {type: 'int', length: 11, autoIncrement: true, notNull: false}, callback);
+    db.renameColumn("messages", "chat_id", "recipient", callback);
 };

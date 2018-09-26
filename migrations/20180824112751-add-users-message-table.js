@@ -16,8 +16,8 @@ exports.setup = function(options, seedLink) {
 };
 
 exports.up = function(db, callback) {
-  db.createTable('users_messages', {
-    id:         { type: dataType.INTEGER, primaryKey: true, autoIncrement: true },
+  db.createTable('messages', {
+    id:         { type: dataType.INTEGER, primaryKey: true, autoIncrement: true},
     recipient:  { type: dataType.STRING, length: 256, notNull: true},
     sender:     { type: dataType.STRING, length: 256, notNull: true},
     message:    { type: dataType.TEXT, notNull: true},
@@ -28,6 +28,6 @@ exports.up = function(db, callback) {
 };
 
 exports.down = function(db, callback) {
-  db.dropTable('users_messages', callback);
+  db.dropTable('messages', callback);
   return null;
 };

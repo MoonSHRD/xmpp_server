@@ -254,7 +254,7 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
             id_user := stanz_elems.Child("id")
             for _, user := range router.UserStreams(to.Node()) {
                 if user.Username() == to.Node() {
-                    id_db, err := storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text())
+                    id_db, err := storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text(), 1)
                     if err != nil {
                         return false
                     }

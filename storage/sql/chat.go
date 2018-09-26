@@ -25,9 +25,9 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (string, error) {
     } else {
         channel=0
     }
-    
-    columns := []string{"id", "chatname", "creator", "channel", "created_at", "updated_at", "avatar"}
-    values := []interface{}{c.Id, c.Chatname, c.Creator, channel, nowExpr, nowExpr, c.Avatar}
+    role := 0
+    columns := []string{"id", "chatname", "creator", "type", "created_at", "updated_at", "avatar", "role"}
+    values := []interface{}{c.Id, c.Chatname, c.Creator, channel, nowExpr, nowExpr, c.Avatar, role}
     
     if c.Id!= ""{
         //columns=append([]string{"id"},columns...)
@@ -172,8 +172,11 @@ func (s *Storage) ChatExists(chat_name string) (bool, error) {
 }
 
 func (s *Storage) FindGroups(chat_name string) []model.Chat{
-	q := sq.Select("id", "chatname", "creator", "channel", "avatar").From("chats").Where("chatname LIKE ? or id = ?", "%" + chat_name + "%", chat_name)
-	records, _:= q.RunWith(s.db).Query()
+	q := sq.Select("id", "chatname", "creator", "type", "avatar").From("chats").Where("chatname LIKE ? or id = ?", "%" + chat_name + "%", chat_name)
+	records, err:= q.RunWith(s.db).Query()
+	if err != nil {
+		print(err)
+	}
 	var list_chats []model.Chat
 	for records.Next(){
 	    chat:=model.Chat{}
