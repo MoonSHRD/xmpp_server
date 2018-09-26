@@ -20,6 +20,6 @@ exports.up = function(db, callback) {
 };
 
 exports.down = function(db, callback) {
-    db.changeColumn('chats', 'id', {type: 'int', length: 11, autoIncrement: true, notNull: false}, callback);
+    db.changeColumn('chats', 'id', {type: 'int', length: 11, autoIncrement: true, notNull: true}, callback);
     db.renameColumn("messages", "chat_id", "recipient", callback);
 };
