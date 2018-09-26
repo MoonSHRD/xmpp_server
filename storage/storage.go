@@ -34,7 +34,7 @@ type userStorage interface {
 
 type chatStorage interface {
 	InsertOrUpdateChat(c *model.Chat) (string, error)
-    InsertChatUser(chat_id string,username string,admin bool) error
+    InsertChatUser(chat_id string,username string, role string) error
     DeleteChatUser(chat_id string,username string) error
     FetchChat(chat_id string) (*model.Chat, error)
     FetchChatUsers(chat_id string) (model.ChatUsers, error)
