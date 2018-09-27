@@ -173,10 +173,10 @@ func (s *Storage) ChatExists(chat_name string) (bool, error) {
 
 func (s *Storage) FindGroups(chat_name string) []model.Chat{
 	q := sq.Select("id", "chatname", "creator", "type", "avatar").From("chats").Where("chatname LIKE ? or id = ?", "%" + chat_name + "%", chat_name)
-	records, err:= q.RunWith(s.db).Query()
-	if err != nil {
-		print(err)
-	}
+	records, _:= q.RunWith(s.db).Query()
+	//if err != nil {
+	//	print(err)
+	//}
 	var list_chats []model.Chat
 	for records.Next(){
 	    chat:=model.Chat{}

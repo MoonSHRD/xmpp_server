@@ -7,6 +7,7 @@ package c2s
 
 import (
 	"crypto/tls"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -861,6 +862,12 @@ func (s *inStream) processMessage(message *xml.Message) {
     }
 
 sendMessage:
+	users := strings.Split(message.ToJID().Node(), "_")
+	secondUser := users[0]
+	if message.FromJID().Node() == secondUser { secondUser = users[1] }
+	a, _ := jid.New(secondUser, "localhost", "", true)
+	message.SetToJID(a)
+	message.SetTo(secondUser)
 	err := router.Route(message)
 	switch err {
 	case nil:
