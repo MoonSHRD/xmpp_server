@@ -87,7 +87,7 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
     chat := model.Chat{Chatname:to.Node(),Type:kind,Creator:from.Node()}
     //todo: deal with double chat insert
     newAcc, err := keystore.NewKeyStore("", keystore.StandardScryptN, keystore.StandardScryptP).NewAccount(from.Node())
-    chat.Id = newAcc.Address.Hex()
+    chat.Id = strings.ToLower(newAcc.Address.Hex())
     seed, _ := strconv.ParseInt(chat.Id, 10, 64)
     chat.Avatar = helpers.GenerateThumb(seed)
     chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
@@ -292,7 +292,7 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
 
     case *xml.Message:
 
-        if !stanza.IsGroupChat() {
+        if !stanza.IsChannelChat() {
             stanz_elems := stanza.Element.Elements()
             msg := stanz_elems.Child("body")
             id_user := stanz_elems.Child("id")
