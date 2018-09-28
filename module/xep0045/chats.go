@@ -114,13 +114,14 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
 func (x *RegisterChat) sendJoinEvent(chat_id string,user *jid.JID) {
     chat,_:=storage.Instance().FetchChat(chat_id)
     x.sendJoinAcceptance(user,chat,roles.paticipant)
-
+//todo: Добавить отправление времени событий и сообщений
     x_elem:=xml.NewElementName("x")
     x_elem.SetNamespace(chatNamespace+"#user")
 
     elem:=xml.NewElementName("presence")
     elem.SetFrom(chat_id + "@localhost")
     elem.SetAttribute("user_joined",user.NDString())
+    //elem.SetAttribute("time", date.String())
     //elem.SetAttribute("contractaddress", contractaddress)
     elem.AppendElement(x_elem)
 
@@ -151,7 +152,6 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
 
     elem:=xml.NewElementName("presence")
     elem.SetAttribute("channel",chat.Type)
-    //elem.SetAttribute("contractaddress",contractaddress)
     elem.SetAttribute("avatar",chat.Avatar)
     elem.SetFrom(chat.Id + "@localhost/"+chat.Chatname)
     elem.SetTo(user.NDString())
@@ -195,7 +195,7 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
         return
     }
     //todo Защита от перезаписи админа
-    storage.Instance().InsertChatUser(groupName, from.Node(),roles.paticipant.affiliation)
+    //date := storage.Instance().InsertChatUser(groupName, from.Node(),roles.paticipant.affiliation)
     x.sendJoinEvent(groupName,from)
 }
 
@@ -258,8 +258,8 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     x_elem.SetAttribute("stamp",time.Now().String())
     message := msg.Elements().Child("body")
     id_user := msg.Elements().Child("id")
-    id_db, _ := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1)
-    x.SendConfirmation(id_user, int(id_db), msg.FromJID().Node())
+    id_db, date, _ := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1)
+    x.SendConfirmation(id_user, int(id_db), msg.FromJID().Node(), date)
 
     msg.AppendElement(x_elem)
 
@@ -300,11 +300,11 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
             if !exist {
                 return false
             }
-            id_db, err := storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text(), 1)
+            id_db, date, err := storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text(), 1)
             if err != nil {
                 return false
             }
-            x.SendConfirmation(id_user, int(id_db), stanza.FromJID().NDString())
+            x.SendConfirmation(id_user, int(id_db), stanza.FromJID().NDString(), date)
             return false
         }
         x.ProcessMessage(stanza)
@@ -368,12 +368,13 @@ func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
         //x.stm.SendElement(elem)
     }
 }
-func (x *RegisterChat) SendConfirmation(idUser xml.XElement, id_db int, to string) {
+func (x *RegisterChat) SendConfirmation(idUser xml.XElement, id_db int, to string, date string) {
     q_elem := xml.NewElementName("confirmation")
     q_elem.SetNamespace(discoNamespace)
     item := xml.NewElementName("item")
     item.SetAttribute("userid", idUser.Text())
     item.SetAttribute("DBid", strconv.Itoa(int(id_db)))
+    item.SetAttribute("date", date)
     q_elem.AppendElement(item)
     elem := xml.NewElementName("iq")
     elem.SetFrom("localhost")

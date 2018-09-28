@@ -5,7 +5,7 @@ import (
 	"github.com/ortuman/jackal/model"
 )
 
-func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline int) (int64, error) {
+func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline int) (int64, string, error) {
 	//check, _ := (*Storage).UserExists(s, chat_id)
 	//if check == false {
 	//	return 0, nil
@@ -15,10 +15,20 @@ func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline int) (int64
 		Values(chat_id, sender, msg, sq.Expr("NOW()"), sq.Expr("NOW()"), isOnline)
 		res, err := q.RunWith(s.db).Exec()
 		if err != nil {
-			return 0, err
+			return 0, "", err
 		}
 		id, _ := res.LastInsertId()
-		return id, nil
+		//date:= sq.Expr("NOW()")
+		date := sq.Select("created_at").From("messages").Where("id = ?", id)
+		res_date, _ := date.RunWith(s.db).Query()
+		var _date string
+
+		for res_date.Next() {
+				res_date.Scan(&_date)
+			}
+		//_date, _, _ := date.ToSql()
+		//print(res_date)
+		return id, _date, nil
 }
 
 func (s *Storage) GetMsgFromDB(chat_id string) ([]model.Message, error) {
