@@ -19,8 +19,8 @@ func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline int) (int64
 		}
 		id, _ := res.LastInsertId()
 		//date:= sq.Expr("NOW()")
-		date := sq.Select("created_at").From("messages").Where("id = ?", id)
-		res_date, _ := date.RunWith(s.db).Query()
+		date_query := sq.Select("created_at").From("messages").Where("id = ?", id)
+		res_date, _ := date_query.RunWith(s.db).Query()
 		var _date string
 
 		for res_date.Next() {

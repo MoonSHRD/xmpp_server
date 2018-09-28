@@ -51,7 +51,7 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (string, error) {
     return c.Id, err
 }
 
-func (s *Storage) InsertChatUser(chat_id string,username string, role string) error {
+func (s *Storage) InsertChatUser(chat_id string,username string, role string) (string, error) {
     
     //var columns []string
     //var values []interface{}
@@ -73,9 +73,17 @@ func (s *Storage) InsertChatUser(chat_id string,username string, role string) er
     q := sq.Insert("chats_users").
         Columns(columns...).
         Values(values...)
-    _, err := q.RunWith(s.db).Exec()
+    res, err := q.RunWith(s.db).Exec()
+	id, _ := res.LastInsertId()
+	date_query := sq.Select("created_at").From("chats_users").Where("id = ?", id)
+	res_date, _ := date_query.RunWith(s.db).Query()
+	var date string
+
+	for res_date.Next() {
+		res_date.Scan(&date)
+	}
     //fmt.Println(id)
-    return err
+    return date, err
 }
 
 func (s *Storage) DeleteChatUser(chat_id string,username string) error {
