@@ -33,7 +33,7 @@ func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline int) (int64
 
 func (s *Storage) GetMsgFromDB(chat_id string) ([]model.Message, error) {
 	var list_messages []model.Message
-	q := sq.Select("sender", "message", "created_at").From("messages").Where("chat_id = ?", chat_id).OrderBy("message")
+	q := sq.Select("sender", "message", "created_at").From("messages").Where("chat_id = ?", chat_id).OrderBy("created_at")
 	records, err:= q.RunWith(s.db).Query()
 	if err!= nil {
 		return nil, err

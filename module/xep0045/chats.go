@@ -1,18 +1,17 @@
 package xep0045
 
 import (
-    "github.com/ortuman/jackal/xml"
-    "github.com/ortuman/jackal/stream"
-    "github.com/ortuman/jackal/module/xep0030"
-    "github.com/ortuman/jackal/storage"
-    "github.com/ortuman/jackal/model"
-    "strconv"
-    "github.com/ortuman/jackal/xml/jid"
-    "github.com/ortuman/jackal/router"
-    "strings"
-    "time"
-    "github.com/ortuman/jackal/helpers"
     "github.com/ethereum/go-ethereum/accounts/keystore"
+    "github.com/ortuman/jackal/helpers"
+    "github.com/ortuman/jackal/model"
+    "github.com/ortuman/jackal/module/xep0030"
+    "github.com/ortuman/jackal/router"
+    "github.com/ortuman/jackal/storage"
+    "github.com/ortuman/jackal/stream"
+    "github.com/ortuman/jackal/xml"
+    "github.com/ortuman/jackal/xml/jid"
+    "strconv"
+    "strings"
 )
 
 const chatNamespace = "http://jabber.org/protocol/muc"
@@ -176,6 +175,7 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
     //    return
     //}
 
+
     if presence.Attributes().Get("channel") == "user_chat" {
         exist,err:=storage.Instance().ChatExists(to.Node())
         if !exist || err != nil {
@@ -243,7 +243,7 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
 
     chat,_ := storage.Instance().FetchChat(id)
     chat_u,_ := storage.Instance().FetchChatUsers(id)
-
+    delete(chat_u, msg.FromJID().Node())
     if chat.Type == "channel" && chat_u[msg.FromJID().Node()].Role!="owner" {
         x.stm.SendElement(msg.BadRequestError())
         return
@@ -256,7 +256,6 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     elem:=xml.NewElementFromElement(msg)
     elem.SetFrom(msg.To())
     x_elem:=xml.NewElementName("x")
-    x_elem.SetAttribute("stamp",time.Now().String())
     message := msg.Elements().Child("body")
     id_user := msg.Elements().Child("id")
     id_db, date, _ := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1)
