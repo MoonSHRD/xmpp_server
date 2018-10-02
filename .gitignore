@@ -49,3 +49,6 @@ jackal.yml
 
 # Crypto files
 UTC*
+
+# migrations env
+database.json
