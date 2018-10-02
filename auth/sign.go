@@ -1,18 +1,19 @@
 package auth
 
 import (
-    "github.com/ortuman/jackal/stream"
     "encoding/base64"
-    "github.com/ortuman/jackal/xml"
-    "github.com/ortuman/jackal/util"
+    "errors"
     "fmt"
-    "strings"
     "github.com/ortuman/jackal/model"
     "github.com/ortuman/jackal/storage"
-    "errors"
-    "log"
-    "time"
+    "github.com/ortuman/jackal/stream"
+    "github.com/ortuman/jackal/util"
+    "github.com/ortuman/jackal/xml"
     "github.com/ortuman/jackal/xml/jid"
+    "log"
+    "math/rand"
+    "strings"
+    "time"
 )
 
 type signState int
@@ -44,6 +45,7 @@ type signParameters struct {
     charset   string
     //authID    string
     signature string
+    pubKey    string
     //pubKey    string
 }
 
@@ -83,6 +85,8 @@ func (r *signParameters) setParameter(p string) {
         r.firstname = val
     case "lastname":
         r.lastname = val
+    case "pubKey":
+        r.pubKey = val
     }
 }
 
@@ -147,7 +151,12 @@ func (sig *Sign) handleStart(elem xml.XElement) error {
     domain := sig.stm.Domain()
     
     username:=strings.ToLower(elem.Text())
-    nonce := base64.StdEncoding.EncodeToString(util.RandomBytes(32))
+    
+    token := make([]byte, 32)
+    rand.Read(token)
+    
+    nonce := base64.StdEncoding.EncodeToString(token)
+    //nonce := base64.StdEncoding.EncodeToString(util.RandomBytes(32))
     
     storage.Instance().SaveUserNonce(username,nonce)
     
@@ -207,7 +216,11 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
         return ErrSASLMalformedRequest
     }
     params := sig.parseParameters(elem.Text())
-    
+    addr,err:=util.AddrFromPrub(params.pubKey)
+    if err!=nil {
+        return ErrSASLNotAuthorized
+    }
+    //log.Println(addr)
     // validate realm
     //if params.realm != sig.stm.Domain() {
     //    return ErrSASLNotAuthorized
@@ -229,69 +242,14 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //    return ErrSASLNotAuthorized
     //}
     
-    nonce,err:=storage.Instance().LoadUserNonce(params.username)
+    nonce,err:=storage.Instance().LoadUserNonce(addr)
     if err!=nil{
         return ErrSASLNotAuthorized
     }
-    addr,err:=util.CheckSign(nonce,params.signature)
-    if err!=nil{
+    suc,err:=util.CheckSign(nonce,params.signature,params.pubKey)
+    if err!=nil || !suc {
         return ErrSASLNotAuthorized
     }
-    if strings.ToLower(params.username)!=strings.ToLower(addr) {
-        return ErrSASLNotAuthorized
-    }
-    
-    //validate pub_key
-    //crypto.UnmarshalPubkey(params.pubKey)
-    
-    //key,_:=crypto.GenerateKey()
-    //key1:=string(crypto.FromECDSA(key))
-    ////pri:="b27a276db9c01d272116f337ddd02b4aa7b2d5869ff5687e5929005196e480fc"
-    //pub:="0x06ef2f0b4be72a8ecce6b2adcda1aad4c91fccf1fe8e1574e07446e47caf106234581ce02e0e328f7d450b648ef40a7f9a203c848893ca66ca0119403ab481e1"
-    //addr:="0xfb951431c04241d6c82b5e0edfcd82ca592e6bab"
-    //
-    ////fmt.Print(fefe)
-    //
-    //pub_ec,err:=crypto.UnmarshalPubkey([]byte(pub))
-    //if err !=nil {
-    //    fmt.Print(err)
-    //}
-    //if crypto.PubkeyToAddress(*pub_ec).String()!=addr {
-    //    return ErrSASLNotAuthorized
-    //}
-    
-    //crypto.Ch
-    
-    //pub_ec,err:=crypto.DecompressPubkey(params.pubKey)
-    //if err !=nil {
-    //    fmt.Println(err)
-    //}
-    //
-    //pub_ec,err=crypto.UnmarshalPubkey(params.pubKey)
-    //if err !=nil {
-    //    fmt.Println(err)
-    //}
-    //if crypto.PubkeyToAddress(*pub_ec).String()!=params.username {
-    //    return ErrSASLNotAuthorized
-    //}
-    //
-    ////validate sign
-    //if !crypto.VerifySignature(params.pubKey,params.nonce,params.signature) {
-    //    return ErrSASLNotAuthorized
-    //}
-    
-    //// validate user
-    //user, err := storage.Instance().FetchUser(params.username)
-    //if err != nil {
-    //	return err
-    //}
-    //if user == nil {
-    //	return ErrSASLNotAuthorized
-    //}
-    //jid:=jid2.JID{domain:"localhost"}
-    //user:=new(model.User)//{"govno","123"}
-    //user.Username=strings.ToLower(params.username)
-    //user.Password=""
     
     user,err:=sig.handleUser(params.username,params.firstname,params.lastname)
     
@@ -299,16 +257,6 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
         log.Print(err)
         return ErrSASLNotAuthorized
     }
-    
-    ////validate response
-    //clientResp := d.computeResponse(params, user, true)
-    //if clientResp != params.response {
-    //	return ErrSASLNotAuthorized
-    //}
-    
-    
-    //serverResp := sig.computeResponse(params, user, false)
-    //respAuth := fmt.Sprintf("rspauth=%s", serverResp)
     
     
     // authenticated... compute and send server response
