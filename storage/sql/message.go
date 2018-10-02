@@ -46,3 +46,13 @@ func (s *Storage) GetMsgFromDB(chat_id string) ([]model.Message, error) {
 	return list_messages, nil
 
 }
+
+//func (s *Storage) GetDateOfMsg(chat_id string) (string) {
+//	date_query := sq.Select("created_at").From("messages").Where("id = ?", id)
+//	res_date, _ := date_query.RunWith(s.db).Query()
+//	var _date string
+//
+//	for res_date.Next() {
+//		res_date.Scan(&_date)
+//	}
+//}

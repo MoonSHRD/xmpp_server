@@ -167,7 +167,7 @@ func (s *Storage) DeleteChat(chat_id string) error {
 // UserExists returns whether or not a user exists within storage.
 func (s *Storage) ChatExists(chat_name string) (bool, error) {
 	//q := sq.Select("COUNT(*)").From("chats").Where(sq.Eq{"chatname": chat_name})
-	q := sq.Select("COUNT(*)").From("chats").Where("chatname = ? or id = ?", "%" + chat_name + "%", chat_name)
+	q := sq.Select("COUNT(*)").From("chats").Where("chatname = ? or id = ?",  chat_name, chat_name)
 
 	var count int
 	err := q.RunWith(s.db).QueryRow().Scan(&count)
