@@ -136,7 +136,7 @@ func (ph *PresenceHandler) processSubscribed(presence *xml.Presence) error {
 	contactJID := presence.FromJID().ToBareJID()
     
     chat:=model.Chat{}
-    chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
+    chat.Id, _ = storage.Instance().InsertOrUpdateChat(&chat)
 
 	log.Infof("processing 'subscribed' - user: %s (%s)", userJID, contactJID)
 
