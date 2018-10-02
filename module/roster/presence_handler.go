@@ -6,9 +6,6 @@
 package roster
 
 import (
-	"github.com/ortuman/jackal/model"
-	"sort"
-	"strings"
 	"sync"
 
 	"github.com/ortuman/jackal/host"
@@ -123,13 +120,13 @@ func (ph *PresenceHandler) processSubscribe(presence *xml.Presence) error {
 		}
 	}
 	router.Route(p)
-	users_id := []string{contactJID.Node(), userJID.Node()}
-	sort.Strings(users_id)
-	chat_id := strings.Join(users_id, "_")
-	chat := model.Chat{Id:chat_id, Chatname:"", Type:"user_chat", Creator:"server"}
-	storage.Instance().InsertOrUpdateChat(&chat)
-	storage.Instance().InsertChatUser(chat_id, users_id[0], "")
-	storage.Instance().InsertChatUser(chat_id, users_id[1], "")
+	//users_id := []string{contactJID.Node(), userJID.Node()}
+	//sort.Strings(users_id)
+	//chat_id := strings.Join(users_id, "_")
+	//chat := model.Chat{Id:chat_id, Chatname:"", Type:"user_chat", Creator:"server"}
+	//storage.Instance().InsertOrUpdateChat(&chat)
+	//storage.Instance().InsertChatUser(chat_id, users_id[0], "")
+	//storage.Instance().InsertChatUser(chat_id, users_id[1], "")
 	return nil
 }
 

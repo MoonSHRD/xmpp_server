@@ -300,10 +300,14 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
             users_id := []string{from.Node(), to.Node()}
             sort.Strings(users_id)
             chat_id := strings.Join(users_id, "_")
-            //exist, _ := storage.Instance().ChatExists(chat_id)
-            //if !exist {
-            //    return "", false
-            //}
+            exist, _ := storage.Instance().ChatExists(chat_id)
+            if !exist {
+               //return "", false
+                chat := model.Chat{Id:chat_id, Chatname:"", Type:"user_chat", Creator:"server"}
+                storage.Instance().InsertOrUpdateChat(&chat)
+                storage.Instance().InsertChatUser(chat_id, users_id[0], "")
+                storage.Instance().InsertChatUser(chat_id, users_id[1], "")
+            }
             id_db, date, err := storage.Instance().WriteMsgToDB(chat_id, from.Node(), msg.Text(), 1)
             if err != nil {
                 return "", true
