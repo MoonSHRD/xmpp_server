@@ -3,6 +3,7 @@ package sql
 import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ortuman/jackal/model"
+	"strings"
 )
 
 func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline int) (int64, string, error) {
@@ -26,8 +27,7 @@ func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline int) (int64
 		for res_date.Next() {
 				res_date.Scan(&_date)
 			}
-		//_date, _, _ := date.ToSql()
-		//print(res_date)
+		_date = strings.Replace(_date, "T", " ", -1)
 		return id, _date, nil
 }
 
