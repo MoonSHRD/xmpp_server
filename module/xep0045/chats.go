@@ -14,6 +14,7 @@ import (
 )
 
 const chatNamespace = "http://jabber.org/protocol/muc"
+const chatEventNamespace = "http://jabber.org/protocol/muc#event"
 const discoNamespace = "http://jabber.org/protocol/disco#items"
 
 type RegisterChat struct {
@@ -54,16 +55,21 @@ func New(stm stream.C2S) *RegisterChat {
     }
 }
 
+func sendChatEvent(user model.User,)  {
+
+}
+
 
 func (x *RegisterChat) CreateChat(presence *xml.Presence) {
     var err error
     to:=presence.ToJID()
     from:=presence.FromJID()
+    contractaddress := presence.Attributes().Get("contractaddress")
     channel := false
     if presence.Attributes().Get("channel")=="1" {
         channel = true
     }
-    chat:=model.Chat{Chatname:to.Node(),Channel:channel,Creator:from.Node()}
+    chat:=model.Chat{Chatname:to.Node(),Channel:channel,Creator:from.Node(), Contractaddress:contractaddress}
     //todo: deal with double chat insert
     chat.Id, err = storage.Instance().InsertOrUpdateChat(&chat)
     chat.Avatar=helpers.GenerateThumb(chat.Id)
@@ -72,7 +78,7 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
     if err != nil {
         x.stm.SendElement(presence.NotAllowedError())
     } else {
-        x.sendJoinAcceptance(from,&chat,roles.owner)
+        x.sendJoinAcceptance(from,&chat,roles.owner, contractaddress)
         //x_elem:=xml.NewElementName("x")
         //x_elem.SetNamespace(chatNamespace+"#user")
         //x_elem.AppendElement(generateRoleItem(roles.owner))
@@ -88,9 +94,9 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
 }
 
 
-func (x *RegisterChat) sendJoinEvent(chat_id int64,user *jid.JID) {
+func (x *RegisterChat) sendJoinEvent(chat_id int64,user *jid.JID, contractaddress string) {
     chat,_:=storage.Instance().FetchChat(chat_id)
-    x.sendJoinAcceptance(user,chat,roles.paticipant)
+    x.sendJoinAcceptance(user,chat,roles.paticipant, contractaddress)
     
     x_elem:=xml.NewElementName("x")
     x_elem.SetNamespace(chatNamespace+"#user")
@@ -98,6 +104,7 @@ func (x *RegisterChat) sendJoinEvent(chat_id int64,user *jid.JID) {
     elem:=xml.NewElementName("presence")
     elem.SetFrom(strconv.FormatInt(chat_id,10)+"@localhost")
     elem.SetAttribute("user_joined",user.NDString())
+    elem.SetAttribute("contractaddress", contractaddress)
     elem.AppendElement(x_elem)
     
     chat_u,_ := storage.Instance().FetchChatUsers(chat_id)
@@ -111,7 +118,7 @@ func (x *RegisterChat) sendJoinEvent(chat_id int64,user *jid.JID) {
     //}
 }
 
-func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role user_role) {
+func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role user_role, contractaddress string) {
     
     x_elem:=xml.NewElementName("x")
     x_elem.SetNamespace(chatNamespace+"#user")
@@ -119,6 +126,7 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
     
     elem:=xml.NewElementName("presence")
     elem.SetAttribute("channel",chat.IsChannel())
+    elem.SetAttribute("contractaddress",contractaddress)
     elem.SetAttribute("avatar",chat.Avatar)
     elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+chat.Chatname)
     elem.SetTo(user.NDString())
@@ -132,6 +140,7 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
     //var err error
     to:=presence.ToJID()
     from:=presence.FromJID()
+    contractaddress := presence.Attributes().Get("contractaddress")
     id,err:=strconv.ParseInt(to.Node(),10,64)
     if err!=nil{
         x.CreateChat(presence)
@@ -144,7 +153,7 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
     }
     
     storage.Instance().InsertChatUser(id,from.Node(),false)
-    x.sendJoinEvent(id,from)
+    x.sendJoinEvent(id,from, contractaddress)
 }
 
 func (x *RegisterChat) sendToUsers(elem *xml.Element, users model.ChatUsers) {
@@ -230,16 +239,28 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) bool {
     case *xml.Message:
     
         if !stanza.IsGroupChat() {
+            msg_elem := stanza.Element.Elements()
+            msg := msg_elem.Child("body")
+            for _, user := range router.UserStreams(to.Node()) {
+                if user.Username() == to.Node() {
+                    storage.Instance().WriteMsgToDB(to.Node(), from.Node(), msg.Text()) // save_msg :=
+                    return false
+                }
+            }
             return false
         }
         x.ProcessMessage(stanza)
 
     case *xml.IQ:
-        el := stanza.Elements().ChildNamespace("query", discoNamespace)
-        if el == nil{
-           return false
+        if stanza.Elements().ChildNamespace("query", discoNamespace)!= nil{
+            x.FindGroup(stanza)
+            return true
         }
-        x.FindGroup(stanza)
+        if stanza.Elements().ChildNamespace("x", chatEventNamespace)!= nil{
+            x.ProcessChatEvent(stanza)
+            return true
+        }
+        return false
     }
 
     return true
@@ -254,6 +275,7 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
        item := xml.NewElementName("item")
        item.SetAttribute("jid", strconv.Itoa(int(group.Id)) + "@localhost")
        item.SetAttribute("name", group.Chatname)
+       item.SetAttribute("contractaddress", group.Contractaddress)
        item.SetAttribute("avatar", group.Avatar)
        item.SetAttribute("channel", group.IsChannel())
        q_elem.AppendElement(item)
@@ -264,4 +286,26 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
     elem.SetType("result")
     elem.AppendElement(q_elem)
     x.stm.SendElement(elem)
+}
+
+func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
+    
+    chat_id,err:=strconv.ParseInt(iq.ToJID().Node(),10,64)
+    if err !=nil {
+        x.stm.SendElement(iq.BadRequestError())
+        return
+    }
+    chat,err:=storage.Instance().FetchChat(chat_id)
+    if err !=nil {
+        x.stm.SendElement(iq.BadRequestError())
+        return
+    }
+    
+    eventItem:=iq.Elements().Child("x").Elements().Child("item")
+    switch eventItem.Attributes().Get("type") {
+    case "suggestion":
+        elem:=xml.NewElementFromElement(iq)
+        elem.SetTo(chat.Creator+"@localhost")
+        x.stm.SendElement(elem)
+    }
 }

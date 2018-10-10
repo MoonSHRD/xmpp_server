@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ortuman/jackal/model"
+    "fmt"
 )
 
 // InsertOrUpdateUser inserts a new user entity into storage,
@@ -25,8 +26,8 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (int64,error) {
         channel=0
     }
     
-    columns := []string{"chatname", "creator", "channel", "created_at", "updated_at", "avatar"}
-    values := []interface{}{c.Chatname, c.Creator, channel, nowExpr, nowExpr, c.Avatar}
+    columns := []string{"chatname", "creator", "contractaddress", "channel", "created_at", "updated_at", "avatar"}
+    values := []interface{}{c.Chatname, c.Creator, c.Contractaddress, channel, nowExpr, nowExpr, c.Avatar}
     
     if c.Id!=0{
         columns=append([]string{"id"},columns...)
@@ -41,7 +42,13 @@ func (s *Storage) InsertOrUpdateChat(c *model.Chat) (int64,error) {
         Values(values...).
         Suffix(suffix, suffixArgs...)
     res, err := q.RunWith(s.db).Exec()
+    if err!=nil {
+        fmt.Println(err)
+    }
     id,err:=res.LastInsertId()
+    if err!=nil {
+        fmt.Println(err)
+    }
     return id,err
 }
 
@@ -165,12 +172,13 @@ func (s *Storage) ChatExists(chat_id int64) (bool, error) {
 }
 
 func (s *Storage) FindGroups(chat_name string) []model.Chat{
-	q := sq.Select("id", "chatname", "creator", "channel", "avatar").From("chats").Where("chatname LIKE ?", ("%" + chat_name + "%"))
-	records, _ := q.RunWith(s.db).Query()
+	q := sq.Select("id", "chatname", "contractaddress", "creator", "channel", "avatar").From("chats").Where("chatname LIKE ? or contractaddress = ?", "%" + chat_name + "%", chat_name)
+	records, err := q.RunWith(s.db).Query()
+	print(err)
 	var list_chats []model.Chat
 	for records.Next(){
 	    chat:=model.Chat{}
-		records.Scan(&chat.Id, &chat.Chatname, &chat.Creator, &chat.Channel, &chat.Avatar)
+		records.Scan(&chat.Id, &chat.Chatname, &chat.Contractaddress,&chat.Creator, &chat.Channel, &chat.Avatar)
 		list_chats = append(list_chats, chat)
 	}
 	return list_chats

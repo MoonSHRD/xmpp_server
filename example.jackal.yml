@@ -14,7 +14,7 @@ storage:
   mysql:
     host: 127.0.0.1:3306
     user: jackal
-    password: yeba
+    password: password
     database: jackal
     pool_size: 16
 

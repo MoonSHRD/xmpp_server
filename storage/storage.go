@@ -14,6 +14,7 @@ import (
 	_ "github.com/ortuman/jackal/storage/badgerdb"
 	"github.com/ortuman/jackal/storage/sql"
 	"github.com/ortuman/jackal/xml"
+
 )
 
 type userStorage interface {
@@ -124,6 +125,10 @@ type blockListStorage interface {
 	FetchBlockListItems(username string) ([]model.BlockListItem, error)
 }
 
+
+type messageStorage interface {
+	WriteMsgToDB(recipient, sender, msg string) (bool, error)
+}
 // Storage represents an entity storage interface.
 type Storage interface {
 	userStorage
@@ -133,6 +138,7 @@ type Storage interface {
 	vCardStorage
 	privateStorage
 	blockListStorage
+	messageStorage
 
 	// Shutdown shuts down storage sub system.
 	Shutdown()
