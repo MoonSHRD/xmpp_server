@@ -139,8 +139,8 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
 func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
     //var err error
     to:=presence.ToJID()
-    from:=presence.FromJID()
-    contractaddress := presence.Attributes().Get("contractaddress")
+    //from:=presence.FromJID()
+    //contractaddress := presence.Attributes().Get("contractaddress")
     id,err:=strconv.ParseInt(to.Node(),10,64)
     if err!=nil{
         x.CreateChat(presence)
@@ -152,8 +152,8 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
         return
     }
     
-    storage.Instance().InsertChatUser(id,from.Node(),false)
-    x.sendJoinEvent(id,from, contractaddress)
+    //storage.Instance().InsertChatUser(id,from.Node(),false)
+    //x.sendJoinEvent(id,from, contractaddress)
 }
 
 func (x *RegisterChat) sendToUsers(elem *xml.Element, users model.ChatUsers) {
