@@ -294,6 +294,10 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
     case *xml.Message:
 
         if stanza.Type() == "chat" {
+            is_user, err := storage.Instance().UserExists(to.Node())
+            if (is_user == false || err != nil) {
+                return "", true
+            }
             stanz_elems := stanza.Element.Elements()
             msg := stanz_elems.Child("body")
             id_user := stanz_elems.Child("id")
