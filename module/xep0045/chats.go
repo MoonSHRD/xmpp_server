@@ -252,24 +252,26 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     if chat.Type == "group" {
         msg.SetAttribute("sender",msg.From())
     }
+    body := (xml.NewElementName("body"))
+    body.SetText(msg.Elements().Child("body").Text())
 
-    elem:=xml.NewElementFromElement(msg)
-    elem.SetFrom(msg.To())
-    x_elem:=xml.NewElementName("x")
+    elem := xml.NewElementName("message")
+    elem.SetAttribute("sender", msg.To())
+    elem.SetAttribute("from", msg.To())
+    elem.SetAttribute("type", "groupchat")
+    elem.AppendElement(body)
+
     message := msg.Elements().Child("body")
     id_user := msg.Elements().Child("id")
     id_db, date, _ := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1)
-    x_elem.SetAttribute("date", date)
     x.SendConfirmation(id_user, int(id_db), msg.FromJID().Node(), date)
 
+    x_elem := xml.NewElementName("x")
+    x_elem.SetAttribute("stamp", date)
     elem.AppendElement(x_elem)
     delete(chat_u, msg.FromJID().Node())
-    x.sendToUsers(elem,chat_u)
 
-    //for username,_ := range chat_u {
-    //    msg.SetTo(username)
-    //    x.stm.SendElement(msg)
-    //}
+    x.sendToUsers(elem,chat_u)
 }
 
 func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
