@@ -126,8 +126,10 @@ type blockListStorage interface {
 
 
 type messageStorage interface {
-	WriteMsgToDB(recipient, sender, msg string, isOnline int) (int64, string, error)
-	GetMsgFromDB(chat_id string) ([]model.Message, error)
+	WriteMsgToDB(recipient, sender, msg string, isOnline, isFile int) (int64, string, error)
+	WriteFileToDB(file model.File, msg_id int64) error
+	GetMsgsFromDB(chat_id string) ([]model.Message, error)
+	GetFilesFromDB(msg_id int64) ([]model.File, error)
 }
 // Storage represents an entity storage interface.
 type Storage interface {

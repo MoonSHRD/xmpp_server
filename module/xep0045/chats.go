@@ -138,24 +138,44 @@ func (x *RegisterChat) sendJoinEvent(chat_id string,user *jid.JID, date string) 
 }
 
 func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role user_role) {
+	elem:=xml.NewElementName("presence")
+	elem.SetAttribute("channel",string(chat.Type))
+	elem.SetAttribute("avatar",chat.Avatar)
+	elem.SetFrom(chat.Id + "@localhost/"+chat.Chatname)
+	elem.SetTo(user.NDString())
     s_elem := xml.NewElementName("set")
-    messages, _ := storage.Instance().GetMsgFromDB(chat.Id)
+    messages, _ := storage.Instance().GetMsgsFromDB(chat.Id)
     for _, message := range(messages) {
         item := xml.NewElementName("item")
         item.SetAttribute("sender", message.Sender)
         item.SetAttribute("message", message.Message)
-        item.SetAttribute("time", message.Time.String())
+		item.SetAttribute("time", message.Time.String())
+
+		if (message.File != 0) {
+			files, err := storage.Instance().GetFilesFromDB(message.Id)
+
+			if (err != nil) {
+				return
+			}
+
+			file_elem := xml.NewElementName("files")
+			for _, file:=range(files) {
+				item := xml.NewElementName("item")
+				item.SetAttribute("name", file.Name)
+				item.SetAttribute("type", file.Type)
+				item.SetText(file.Hash)
+				file_elem.AppendElement(item)
+			}
+			item.AppendElement(file_elem)
+		}
+
         s_elem.AppendElement(item)
     }
     x_elem:=xml.NewElementName("x")
     x_elem.SetNamespace(chatNamespace+"#user")
     x_elem.AppendElement(generateRoleItem(role))
 
-    elem:=xml.NewElementName("presence")
-    elem.SetAttribute("channel",string(chat.Type))
-    elem.SetAttribute("avatar",chat.Avatar)
-    elem.SetFrom(chat.Id + "@localhost/"+chat.Chatname)
-    elem.SetTo(user.NDString())
+
     elem.AppendElement(x_elem)
     elem.AppendElement(s_elem)
 
@@ -263,7 +283,36 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
 
     message := msg.Elements().Child("body")
     id_user := msg.Elements().Child("id")
-    id_db, date, _ := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1)
+    list_files := x.GetFilesFromStanza(msg)
+	with_file := 0
+	if (len(list_files) > 0) {
+		with_file = 1
+
+		file_elem := xml.NewElementName("files")
+		for _, file:=range(list_files) {
+			item := xml.NewElementName("item")
+			item.SetAttribute("name", file.Name)
+			item.SetAttribute("type", file.Type)
+			item.SetText(file.Hash)
+			file_elem.AppendElement(item)
+		}
+		elem.AppendElement(file_elem)
+
+	}
+    id_db, date, err := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1, with_file)
+    if (err != nil) {
+		x.stm.SendElement(msg.BadRequestError())
+    	return
+	}
+
+	// Записываем все файлы из станзы в базу
+	for _, file:=range(list_files) {
+		err := storage.Instance().WriteFileToDB(file, id_db)
+		if (err != nil) {
+			return
+		}
+	}
+
     x.SendConfirmation(id_user, int(id_db), msg.FromJID().Node(), date)
 
     x_elem := xml.NewElementName("x")
@@ -314,11 +363,24 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
                 storage.Instance().InsertChatUser(chat_id, users_id[0], "")
                 storage.Instance().InsertChatUser(chat_id, users_id[1], "")
             }
-            id_db, date, err := storage.Instance().WriteMsgToDB(chat_id, from.Node(), msg.Text(), 1)
+            list_files := x.GetFilesFromStanza(stanza)
+			with_file := 0
+			if (len(list_files) > 0) {
+				with_file = 1
+			}
+            id_db, date, err := storage.Instance().WriteMsgToDB(chat_id, from.Node(), msg.Text(), 1, with_file)
             if err != nil {
                 return "", true
             }
-            x.SendConfirmation(id_user, int(id_db), stanza.FromJID().NDString(), date)
+            // Записываем все файлы из станзы в базу
+			for _, file:=range(list_files) {
+				err := storage.Instance().WriteFileToDB(file, id_db)
+				if (err != nil) {
+					return "", true
+				}
+			}
+
+			x.SendConfirmation(id_user, int(id_db), stanza.FromJID().NDString(), date)
             return date, false
         }
         x.ProcessMessage(stanza)
@@ -397,6 +459,24 @@ func (x *RegisterChat) SendConfirmation(idUser xml.XElement, id_db int, to strin
     elem.SetType("result")
     elem.AppendElement(q_elem)
     x.stm.SendElement(elem)
+}
+
+func (x *RegisterChat) GetFilesFromStanza(msg *xml.Message) []model.File{
+	attrs := msg.Elements()
+	var list_files []model.File
+	is_files := attrs.Child("files")
+	if (is_files != nil) {
+		for _, file := range (is_files.Elements().All()) {
+			if (file != nil) {
+				hash := file.Text()
+				file_type := file.Attributes().Get("type")
+				name := file.Attributes().Get("name")
+				_file := model.File{Hash: hash, Type: file_type, Name: name}
+				list_files = append(list_files, _file)
+			}
+		}
+	}
+	return list_files
 }
 
 //func (x *RegisterChat) CreateUsersChat(chat_id string) {

@@ -15,6 +15,12 @@ type ChatUser struct {
 
 type ChatUsers map[string]ChatUser
 
+type File struct {
+    Hash string
+    Type string
+    Name string
+}
+
 //func (chat Chat) IsChannel() string {
 //    channel:="0"
 //    if chat.Channel {
