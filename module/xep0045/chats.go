@@ -10,7 +10,8 @@ import (
     "github.com/ortuman/jackal/stream"
     "github.com/ortuman/jackal/xml"
     "github.com/ortuman/jackal/xml/jid"
-    "sort"
+	"log"
+	"sort"
     "strconv"
     "strings"
 )
@@ -96,17 +97,6 @@ func (x *RegisterChat) CreateChat(presence *xml.Presence) {
         x.stm.SendElement(presence.NotAllowedError())
     } else {
         x.sendJoinAcceptance(from, &chat, roles.owner)
-        //x_elem:=xml.NewElementName("x")
-        //x_elem.SetNamespace(chatNamespace+"#user")
-        //x_elem.AppendElement(generateRoleItem(roles.owner))
-        //
-        //elem:=xml.NewElementName("presence")
-        //elem.SetFrom(strconv.Itoa(int(chat.Id))+"@localhost/"+to.Node())
-        //elem.SetTo(from.NDString())
-        //elem.SetAttribute("channel",chat.IsChannel())
-        //elem.AppendElement(x_elem)
-        //
-        //x.stm.SendElement(elem)
     }
 }
 
@@ -122,19 +112,11 @@ func (x *RegisterChat) sendJoinEvent(chat_id string,user *jid.JID, date string) 
     elem.SetFrom(chat_id + "@localhost")
     elem.SetAttribute("user_joined",user.NDString())
     elem.SetAttribute("date", date)
-    //elem.SetAttribute("time", date.String())
-    //elem.SetAttribute("contractaddress", contractaddress)
     elem.AppendElement(x_elem)
 
     chat_u,_ := storage.Instance().FetchChatUsers(chat_id)
 
     x.sendToUsers(elem,chat_u)
-    //for username,_ := range chat_u {
-    //    elem.SetTo(username)
-    //    for _,u_stream := range router.UserStreams(username) {
-    //        u_stream.SendElement(elem)
-    //    }
-    //}
 }
 
 func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role user_role) {
@@ -184,33 +166,10 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
 
 
 func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
-    //var err error
     to:=presence.ToJID()
     from:=presence.FromJID()
-    //contractaddress := presence.Attributes().Get("contractaddress")
     groupName := to.Node()
 
-    //x.CreateChat(presence)
-    //if err!=nil{
-    //    x.CreateChat(presence)
-    //    return
-    //}
-
-
-    //if presence.Attributes().Get("channel") == "user_chat" {
-    //    exist,err:=storage.Instance().ChatExists(to.Node())
-    //    if !exist || err != nil {
-    //        x.CreateUsersChat(to.Node())
-    //        users := strings.Split(to.Node(), "_")
-    //        //secondUser := users[0]
-    //        //if users[0] == from.Node() {
-    //        //    secondUser = users[1]
-    //        //}
-    //        storage.Instance().InsertChatUser(to.Node(), users[0], "")
-    //        storage.Instance().InsertChatUser(to.Node(), users[1], "")
-    //        return
-    //    }
-    //}
     exist, err:=storage.Instance().ChatExists(groupName)
     if !exist || err!=nil {
         x.CreateChat(presence)
@@ -245,10 +204,6 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     }
 
     id:=node
-    //if err != nil {
-    //    x.stm.SendElement(msg.BadRequestError())
-    //    return
-    //}
 
     exist,err := storage.Instance().ChatExists(id)
 
@@ -285,7 +240,7 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
     id_user := msg.Elements().Child("id")
     list_files := x.GetFilesFromStanza(msg)
 	with_file := 0
-	if (len(list_files) > 0) {
+	if len(list_files) > 0 {
 		with_file = 1
 
 		file_elem := xml.NewElementName("files")
@@ -300,7 +255,8 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
 
 	}
     id_db, date, err := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1, with_file)
-    if (err != nil) {
+    if err != nil {
+    	log.Println(err)
 		x.stm.SendElement(msg.BadRequestError())
     	return
 	}
@@ -308,7 +264,8 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
 	// Записываем все файлы из станзы в базу
 	for _, file:=range(list_files) {
 		err := storage.Instance().WriteFileToDB(file, id_db)
-		if (err != nil) {
+		if err != nil {
+			x.stm.SendElement(msg.BadRequestError())
 			return
 		}
 	}
@@ -346,7 +303,7 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
 
         if stanza.Type() == "chat" {
             is_user, err := storage.Instance().UserExists(to.Node())
-            if (is_user == false || err != nil) {
+            if is_user == false || err != nil {
                 return "", true
             }
             stanz_elems := stanza.Element.Elements()
@@ -357,7 +314,6 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
             chat_id := strings.Join(users_id, "_")
             exist, _ := storage.Instance().ChatExists(chat_id)
             if !exist {
-               //return "", false
                 chat := model.Chat{Id:chat_id, Chatname:"", Type:"user_chat", Creator:"server"}
                 storage.Instance().InsertOrUpdateChat(&chat)
                 storage.Instance().InsertChatUser(chat_id, users_id[0], "")
@@ -365,7 +321,7 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
             }
             list_files := x.GetFilesFromStanza(stanza)
 			with_file := 0
-			if (len(list_files) > 0) {
+			if len(list_files) > 0 {
 				with_file = 1
 			}
             id_db, date, err := storage.Instance().WriteMsgToDB(chat_id, from.Node(), msg.Text(), 1, with_file)
@@ -375,7 +331,7 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
             // Записываем все файлы из станзы в базу
 			for _, file:=range(list_files) {
 				err := storage.Instance().WriteFileToDB(file, id_db)
-				if (err != nil) {
+				if err != nil {
 					return "", true
 				}
 			}
@@ -409,7 +365,6 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
        item := xml.NewElementName("item")
        item.SetAttribute("jid", group.Id + "@localhost")
        item.SetAttribute("name", group.Chatname)
-       //item.SetAttribute("contractaddress", group.Contractaddress)
        item.SetAttribute("avatar", group.Avatar)
        item.SetAttribute("channel", string(group.Type))
        q_elem.AppendElement(item)
@@ -425,10 +380,6 @@ func (x *RegisterChat) FindGroup(presence *xml.IQ){
 func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
 
     chat_id := iq.ToJID().Node()
-    //if err !=nil {
-    //    x.stm.SendElement(iq.BadRequestError())
-    //    return
-    //}
     chat,err:=storage.Instance().FetchChat(chat_id)
     if err !=nil || chat==nil {
         x.stm.SendElement(iq.BadRequestError())
@@ -441,14 +392,12 @@ func (x *RegisterChat) ProcessChatEvent(iq *xml.IQ){
         elem:=xml.NewElementFromElement(iq)
         elem.SetTo(chat.Creator+"@localhost")
         x.sendToAnotherUser(elem,chat.Creator)
-        //x.stm.SendElement(elem)
     }
 }
 func (x *RegisterChat) SendConfirmation(idUser xml.XElement, id_db int, to string, date string) {
     q_elem := xml.NewElementName("confirmation")
     q_elem.SetNamespace(discoNamespace)
     item := xml.NewElementName("item")
-    //item.SetAttribute("userid", idUser.Text())
     item.SetAttribute("userid", "1")
     item.SetAttribute("DBid", strconv.Itoa(int(id_db)))
     item.SetAttribute("date", date)
@@ -465,9 +414,9 @@ func (x *RegisterChat) GetFilesFromStanza(msg *xml.Message) []model.File{
 	attrs := msg.Elements()
 	var list_files []model.File
 	is_files := attrs.Child("files")
-	if (is_files != nil) {
+	if is_files != nil {
 		for _, file := range (is_files.Elements().All()) {
-			if (file != nil) {
+			if file != nil {
 				hash := file.Text()
 				file_type := file.Attributes().Get("type")
 				name := file.Attributes().Get("name")
@@ -478,8 +427,3 @@ func (x *RegisterChat) GetFilesFromStanza(msg *xml.Message) []model.File{
 	}
 	return list_files
 }
-
-//func (x *RegisterChat) CreateUsersChat(chat_id string) {
-//    chat := model.Chat{Id:chat_id, Chatname:"",Type:"user_chat",Creator:"server"}
-//    storage.Instance().InsertOrUpdateChat(&chat)
-//}
