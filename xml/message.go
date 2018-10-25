@@ -23,6 +23,8 @@ const (
 
 	// GroupChatType represents a 'groupchat' message type.
 	GroupChatType = "groupchat"
+
+	ChannelType = "channel"
 )
 
 // Message type represents a <message> element.
@@ -80,6 +82,11 @@ func (m *Message) IsGroupChat() bool {
 	return m.Type() == GroupChatType
 }
 
+func (m *Message) IsChannelChat() bool {
+	return m.Type() == ChannelType
+}
+
+
 // IsMessageWithBody returns true if the message
 // has a body sub element.
 func (m *Message) IsMessageWithBody() bool {
@@ -110,7 +117,7 @@ func (m *Message) SetFromJID(from *jid.JID) {
 
 func isMessageType(messageType string) bool {
 	switch messageType {
-	case "", ErrorType, NormalType, HeadlineType, ChatType, GroupChatType:
+	case "", ErrorType, NormalType, HeadlineType, ChatType, GroupChatType, ChannelType:
 		return true
 	default:
 		return false

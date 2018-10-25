@@ -43,3 +43,9 @@ node_modules/
 
 # Jackal config
 jackal.yml
+
+# JSON config
+*.json
+
+# Crypto files
+UTC*
