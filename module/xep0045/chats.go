@@ -170,12 +170,10 @@ func (x *RegisterChat) ProcessPresence(presence *xml.Presence) {
     from:=presence.FromJID()
     groupName := to.Node()
 
-    exist, err:=storage.Instance().ChatExists(groupName)
-    if !exist || err!=nil {
-        x.CreateChat(presence)
-        return
-    }
-    //todo Защита от перезаписи админа
+    if presence.Attributes().Get("channel") != "" {
+		   x.CreateChat(presence)
+		   return
+	}
     date, _ := storage.Instance().InsertChatUser(groupName, from.Node(),roles.paticipant.affiliation)
     x.sendJoinEvent(groupName,from, date)
 }
