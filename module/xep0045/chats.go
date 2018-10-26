@@ -132,7 +132,7 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
         item.SetAttribute("sender", message.Sender)
         item.SetAttribute("message", message.Message)
 
-		item.SetAttribute("time", strconv.FormatInt(message.Time, 14))
+		item.SetAttribute("time", strconv.FormatInt(message.Time, 10))
 
 		if (message.File != 0) {
 			files, err := storage.Instance().GetFilesFromDB(message.Id)
@@ -254,7 +254,7 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
 
 	}
     id_db, _date, err := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1, with_file)
-    date := strconv.FormatInt(_date, 14)
+    date := strconv.FormatInt(_date, 10)
     if err != nil {
     	log.Println(err)
 		x.stm.SendElement(msg.BadRequestError())
@@ -325,7 +325,7 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
 				with_file = 1
 			}
             id_db, _date, err := storage.Instance().WriteMsgToDB(chat_id, from.Node(), msg.Text(), 1, with_file)
-            date := strconv.FormatInt(_date, 14)
+            date := strconv.FormatInt(_date, 10)
             if err != nil {
                 return "", true
             }
