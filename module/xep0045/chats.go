@@ -131,7 +131,8 @@ func (x *RegisterChat) sendJoinAcceptance(user *jid.JID,chat *model.Chat,role us
         item := xml.NewElementName("item")
         item.SetAttribute("sender", message.Sender)
         item.SetAttribute("message", message.Message)
-		item.SetAttribute("time", message.Time.String())
+
+		item.SetAttribute("time", strconv.FormatInt(message.Time, 14))
 
 		if (message.File != 0) {
 			files, err := storage.Instance().GetFilesFromDB(message.Id)
@@ -252,7 +253,8 @@ func (x *RegisterChat) ProcessMessage(msg *xml.Message) {
 		elem.AppendElement(file_elem)
 
 	}
-    id_db, date, err := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1, with_file)
+    id_db, _date, err := storage.Instance().WriteMsgToDB(id, id, message.Text(), 1, with_file)
+    date := strconv.FormatInt(_date, 14)
     if err != nil {
     	log.Println(err)
 		x.stm.SendElement(msg.BadRequestError())
@@ -322,7 +324,8 @@ func (x *RegisterChat) ProcessElem(stanza xml.Stanza) (string, bool) {
 			if len(list_files) > 0 {
 				with_file = 1
 			}
-            id_db, date, err := storage.Instance().WriteMsgToDB(chat_id, from.Node(), msg.Text(), 1, with_file)
+            id_db, _date, err := storage.Instance().WriteMsgToDB(chat_id, from.Node(), msg.Text(), 1, with_file)
+            date := strconv.FormatInt(_date, 14)
             if err != nil {
                 return "", true
             }

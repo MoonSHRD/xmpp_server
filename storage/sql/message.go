@@ -3,27 +3,26 @@ package sql
 import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ortuman/jackal/model"
-	"strings"
+	"time"
 )
 
-func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline, isFile int) (int64, string, error) {
+func (s *Storage) WriteMsgToDB(chat_id, sender, msg string, isOnline, isFile int) (int64, int64, error) {
+	_time := time.Now().UTC().UnixNano() / 1000000
 	q := sq.Insert("messages").
 		Columns("chat_id", "sender", "message", "created_at", "updated_at", "delivered", "files").
-		Values(chat_id, sender, msg, sq.Expr("NOW()"), sq.Expr("NOW()"), isOnline, isFile)
+		Values(chat_id, sender, msg, _time, _time, isOnline, isFile)
 		res, err := q.RunWith(s.db).Exec()
 		if err != nil {
-			return 0, "", err
+			return 0, 0, err
 		}
 		id, _ := res.LastInsertId()
 		date_query := sq.Select("created_at").From("messages").Where("id = ?", id)
 		res_date, _ := date_query.RunWith(s.db).Query()
-		var _date string
-
+		var date int64
 		for res_date.Next() {
-				res_date.Scan(&_date)
-			}
-		_date = strings.Replace(_date, "T", " ", -1)
-		return id, _date, nil
+			res_date.Scan(&date)
+		}
+		return id, date, nil
 }
 
 func (s *Storage) WriteFileToDB(file model.File, msg_id int64) error{
