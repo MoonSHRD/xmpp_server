@@ -1,25 +1,30 @@
 package model
 
 type Chat struct {
-    Id int64
+    Id string
     Chatname string
-    Contractaddress string
     Creator string
-    Channel bool
+    Type string
     Avatar string
 }
 
 type ChatUser struct {
     Username string
-    Admin int
+    Role string
 }
 
 type ChatUsers map[string]ChatUser
 
-func (chat Chat) IsChannel() string {
-    channel:="0"
-    if chat.Channel {
-        channel="1"
-    }
-    return channel
+type File struct {
+    Hash string
+    Type string
+    Name string
 }
+
+//func (chat Chat) IsChannel() string {
+//    channel:="0"
+//    if chat.Channel {
+//        channel="1"
+//    }
+//    return channel
+//}

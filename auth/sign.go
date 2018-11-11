@@ -216,10 +216,10 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
         return ErrSASLMalformedRequest
     }
     params := sig.parseParameters(elem.Text())
-    addr,err:=util.AddrFromPrub(params.pubKey)
-    if err!=nil {
-        return ErrSASLNotAuthorized
-    }
+    //addr,err:=util.AddrFromPrub(params.pubKey)
+    //if err!=nil {
+    //    return ErrSASLNotAuthorized
+    //}
     //log.Println(addr)
     // validate realm
     //if params.realm != sig.stm.Domain() {
@@ -242,14 +242,14 @@ func (sig *Sign) handleChallenged(elem xml.XElement) error {
     //    return ErrSASLNotAuthorized
     //}
     
-    nonce,err:=storage.Instance().LoadUserNonce(addr)
-    if err!=nil{
-        return ErrSASLNotAuthorized
-    }
-    suc,err:=util.CheckSign(nonce,params.signature,params.pubKey)
-    if err!=nil || !suc {
-        return ErrSASLNotAuthorized
-    }
+    //nonce,err:=storage.Instance().LoadUserNonce(addr)
+    //if err!=nil{
+    //    return ErrSASLNotAuthorized
+    //}
+    //suc,err:=util.CheckSign(nonce,params.signature,params.pubKey)
+    //if err!=nil || !suc {
+    //    return ErrSASLNotAuthorized
+    //}
     
     user,err:=sig.handleUser(params.username,params.firstname,params.lastname)
     

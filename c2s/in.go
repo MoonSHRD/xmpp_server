@@ -7,6 +7,7 @@ package c2s
 
 import (
 	"crypto/tls"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -788,7 +789,8 @@ func (s *inStream) processComponentStanza(stanza xml.Stanza) {
 }
 
 func (s *inStream) processIQ(iq *xml.IQ) {
-	if s.mods.chats.ProcessElem(iq) {
+	_, err := s.mods.chats.ProcessElem(iq)
+	if  err {
 		return
 	}
 	toJID := iq.ToJID()
@@ -834,8 +836,8 @@ func (s *inStream) processPresence(presence *xml.Presence) {
 	if replyOnBehalf && (presence.IsAvailable() || presence.IsUnavailable()) {
 		s.ctx.SetObject(presence, presenceCtxKey)
 	}
-	
-	if s.mods.chats.ProcessElem(presence) {
+	_, err := s.mods.chats.ProcessElem(presence)
+	if  err {
 	    return
     }
 	
@@ -855,12 +857,19 @@ func (s *inStream) processPresence(presence *xml.Presence) {
 
 func (s *inStream) processMessage(message *xml.Message) {
 	toJID := message.ToJID()
-    
-    if s.mods.chats.ProcessElem(message) {
+    date, _err := s.mods.chats.ProcessElem(message)
+    if _err {
         return
     }
 
 sendMessage:
+	users := strings.Split(message.ToJID().Node(), "_")
+	secondUser := users[0]
+	if message.FromJID().Node() == secondUser { secondUser = users[1] }
+	a, _ := jid.New(secondUser, "localhost", "", true)
+	message.SetToJID(a)
+	message.SetAttribute("date", date)
+	//message.SetTo(secondUser)
 	err := router.Route(message)
 	switch err {
 	case nil:

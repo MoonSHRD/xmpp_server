@@ -6,7 +6,8 @@
 package roster
 
 import (
-	"sync"
+    "github.com/ortuman/jackal/model"
+    "sync"
 
 	"github.com/ortuman/jackal/host"
 	"github.com/ortuman/jackal/log"
@@ -120,12 +121,22 @@ func (ph *PresenceHandler) processSubscribe(presence *xml.Presence) error {
 		}
 	}
 	router.Route(p)
+	//users_id := []string{contactJID.Node(), userJID.Node()}
+	//sort.Strings(users_id)
+	//chat_id := strings.Join(users_id, "_")
+	//chat := model.Chat{Id:chat_id, Chatname:"", Type:"user_chat", Creator:"server"}
+	//storage.Instance().InsertOrUpdateChat(&chat)
+	//storage.Instance().InsertChatUser(chat_id, users_id[0], "")
+	//storage.Instance().InsertChatUser(chat_id, users_id[1], "")
 	return nil
 }
 
 func (ph *PresenceHandler) processSubscribed(presence *xml.Presence) error {
 	userJID := presence.ToJID().ToBareJID()
 	contactJID := presence.FromJID().ToBareJID()
+    
+    chat:=model.Chat{}
+    chat.Id, _ = storage.Instance().InsertOrUpdateChat(&chat)
 
 	log.Infof("processing 'subscribed' - user: %s (%s)", userJID, contactJID)
 
